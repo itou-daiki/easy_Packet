@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>easyPacket - ネットワーク学習Webアプリ</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 左エリア: 学習・課題 -->
+        <aside class="tutorial-area">
+            <h2>📚 チュートリアル</h2>
+            <div id="tutorial-content">
+                <h3>ようこそ easyPacket へ！</h3>
+                <p>ネットワークコマンドを実際に試しながら、パケットの旅を可視化して学びましょう。</p>
+
+                <div class="lesson">
+                    <h4>レッスン1: nslookup を試そう</h4>
+                    <p>ドメイン名からIPアドレスを調べるコマンドです。</p>
+                    <code>nslookup google.com</code>
+                    <p>右側のコマンドボタンをクリックするか、直接コンソールに入力してみましょう。</p>
+                </div>
+
+                <div class="lesson">
+                    <h4>レッスン2: ping でサーバーに接続</h4>
+                    <p>サーバーが応答するか確認するコマンドです。</p>
+                    <code>ping google.com</code>
+                </div>
+
+                <div class="lesson">
+                    <h4>レッスン3: traceroute で経路を調査</h4>
+                    <p>パケットがどのルーターを経由するか追跡します。</p>
+                    <code>traceroute google.com</code>
+                </div>
+
+                <div class="challenge">
+                    <h4>🎯 チャレンジ: トラブルシューティング</h4>
+                    <p>「broken-server.com」に接続できない原因を調べてください。</p>
+                    <ol>
+                        <li>nslookup でDNS解決を確認</li>
+                        <li>ping で接続を試す</li>
+                        <li>どんなエラーが出ましたか？</li>
+                    </ol>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 中央エリア: 実行・可視化 -->
+        <main class="visualization-area">
+            <div class="network-diagram">
+                <h2>🌐 ネットワーク模式図</h2>
+                <canvas id="network-canvas" width="800" height="400"></canvas>
+            </div>
+
+            <div class="console-wrapper">
+                <h2>💻 コンソール</h2>
+                <div id="console-output"></div>
+                <div class="console-input-wrapper">
+                    <span class="prompt">$ </span>
+                    <textarea id="console-input" placeholder="コマンドを入力してください (例: ping google.com)"></textarea>
+                </div>
+            </div>
+        </main>
+
+        <!-- 右エリア: コマンド・用語 -->
+        <aside class="commands-area">
+            <div class="command-buttons">
+                <h2>⚡ クイックコマンド</h2>
+                <button class="cmd-btn" data-cmd="nslookup google.com">nslookup google.com</button>
+                <button class="cmd-btn" data-cmd="ping google.com">ping google.com</button>
+                <button class="cmd-btn" data-cmd="ping github.com">ping github.com</button>
+                <button class="cmd-btn" data-cmd="traceroute google.com">traceroute google.com</button>
+                <button class="cmd-btn" data-cmd="ipconfig">ipconfig</button>
+                <button class="cmd-btn" data-cmd="ping broken-server.com">ping broken-server.com</button>
+                <button class="cmd-btn clear" data-cmd="clear">clear</button>
+            </div>
+
+            <div class="glossary">
+                <h2>📖 用語集</h2>
+                <div class="term">
+                    <h4>IPアドレス</h4>
+                    <p>ネットワーク上のコンピュータを識別する番号。住所のようなもの。</p>
+                </div>
+                <div class="term">
+                    <h4>DNS</h4>
+                    <p>Domain Name System。ドメイン名をIPアドレスに変換する仕組み。</p>
+                </div>
+                <div class="term">
+                    <h4>パケット</h4>
+                    <p>ネットワークで送受信されるデータの小さな単位。荷物のようなもの。</p>
+                </div>
+                <div class="term">
+                    <h4>ルーター</h4>
+                    <p>パケットを目的地まで中継する装置。交差点のようなもの。</p>
+                </div>
+                <div class="term">
+                    <h4>TTL (Time To Live)</h4>
+                    <p>パケットが経由できるルーターの最大数。無限ループを防ぐ。</p>
+                </div>
+                <div class="term">
+                    <h4>ping</h4>
+                    <p>相手のサーバーが応答するか確認するコマンド。応答時間も測定できる。</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="simulator.js"></script>
+    <script src="visualizer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

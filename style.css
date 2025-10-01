@@ -1,0 +1,300 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    display: grid;
+    grid-template-columns: 300px 1fr 280px;
+    gap: 15px;
+    height: 100vh;
+    padding: 15px;
+}
+
+/* 左エリア: 学習・課題 */
+.tutorial-area {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tutorial-area h2 {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.tutorial-area h3 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.tutorial-area h4 {
+    color: #555;
+    margin-top: 15px;
+    margin-bottom: 8px;
+    font-size: 1rem;
+}
+
+.lesson, .challenge {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #667eea;
+}
+
+.challenge {
+    border-left-color: #ff6b6b;
+    background: #fff5f5;
+}
+
+.lesson code, .challenge code {
+    display: block;
+    background: #2d2d2d;
+    color: #a9dc76;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+    font-family: 'Courier New', monospace;
+}
+
+/* 中央エリア: 実行・可視化 */
+.visualization-area {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.network-diagram {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    flex: 1;
+}
+
+.network-diagram h2 {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+#network-canvas {
+    display: block;
+    width: 100%;
+    height: calc(100% - 50px);
+    background: #f0f4f8;
+    border-radius: 8px;
+}
+
+.console-wrapper {
+    background: #1e1e1e;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.console-wrapper h2 {
+    color: #a9dc76;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+#console-output {
+    flex: 1;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: #d4d4d4;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #252525;
+    border-radius: 5px;
+    min-height: 200px;
+}
+
+.console-line {
+    margin: 5px 0;
+    line-height: 1.5;
+}
+
+.console-line.command {
+    color: #78dce8;
+}
+
+.console-line.success {
+    color: #a9dc76;
+}
+
+.console-line.error {
+    color: #ff6188;
+}
+
+.console-line.info {
+    color: #ffd866;
+}
+
+.console-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: #252525;
+    border-radius: 5px;
+    padding: 8px;
+}
+
+.prompt {
+    color: #78dce8;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+#console-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #d4d4d4;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    outline: none;
+    resize: none;
+    min-height: 24px;
+    max-height: 100px;
+}
+
+/* 右エリア: コマンド・用語 */
+.commands-area {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+}
+
+.command-buttons {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.command-buttons h2 {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.cmd-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.cmd-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.cmd-btn:active {
+    transform: translateY(0);
+}
+
+.cmd-btn.clear {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+}
+
+.glossary {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.glossary h2 {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.term {
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
+}
+
+.term h4 {
+    color: #333;
+    margin-bottom: 5px;
+    font-size: 0.95rem;
+}
+
+.term p {
+    color: #666;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+/* スクロールバーのスタイリング */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.5);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.8);
+}
+
+/* レスポンシブデザイン */
+@media (max-width: 1200px) {
+    .container {
+        grid-template-columns: 250px 1fr 250px;
+    }
+}
+
+@media (max-width: 900px) {
+    .container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+        overflow-y: auto;
+    }
+
+    .tutorial-area,
+    .commands-area {
+        max-height: 300px;
+    }
+}

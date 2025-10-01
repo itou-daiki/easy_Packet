@@ -1,0 +1,31 @@
+{
+  "google.com": [
+    { "ip": "192.168.1.1", "name": "my-router.local", "time": 1 },
+    { "ip": "10.0.0.1", "name": "provider-router-1.isp.net", "time": 15 },
+    { "ip": "203.0.113.5", "name": "ix-router.net", "time": 20 },
+    { "ip": "8.8.8.8", "name": "google-dns.com", "time": 22 }
+  ],
+  "github.com": [
+    { "ip": "192.168.1.1", "name": "my-router.local", "time": 1 },
+    { "ip": "10.0.0.1", "name": "provider-router-1.isp.net", "time": 12 },
+    { "ip": "100.64.0.1", "name": "backbone-router.net", "time": 25 },
+    { "ip": "20.205.243.166", "name": "github.com", "time": 30 }
+  ],
+  "example-school.ac.jp": [
+    { "ip": "192.168.1.1", "name": "my-router.local", "time": 1 },
+    { "ip": "10.0.0.1", "name": "provider-router-1.isp.net", "time": 10 },
+    { "ip": "192.0.2.1", "name": "example-school.ac.jp", "time": 18 }
+  ],
+  "yahoo.co.jp": [
+    { "ip": "192.168.1.1", "name": "my-router.local", "time": 1 },
+    { "ip": "10.0.0.1", "name": "provider-router-1.isp.net", "time": 8 },
+    { "ip": "210.81.153.1", "name": "jp-backbone.net", "time": 15 },
+    { "ip": "182.22.59.229", "name": "yahoo.co.jp", "time": 19 }
+  ],
+  "microsoft.com": [
+    { "ip": "192.168.1.1", "name": "my-router.local", "time": 1 },
+    { "ip": "10.0.0.1", "name": "provider-router-1.isp.net", "time": 14 },
+    { "ip": "100.65.0.1", "name": "azure-edge.net", "time": 28 },
+    { "ip": "20.112.52.29", "name": "microsoft.com", "time": 32 }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "google.com": "8.8.8.8",
+  "github.com": "20.205.243.166",
+  "example-school.ac.jp": "192.0.2.1",
+  "broken-server.com": "TIMEOUT",
+  "yahoo.co.jp": "182.22.59.229",
+  "microsoft.com": "20.112.52.29",
+  "amazon.com": "54.239.28.85",
+  "wikipedia.org": "198.35.26.96",
+  "youtube.com": "142.250.207.46",
+  "twitter.com": "104.244.42.193"
+}
