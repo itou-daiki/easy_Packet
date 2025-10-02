@@ -75,6 +75,25 @@ body {
     font-size: 0.9rem;
 }
 
+.getting-started {
+    background: #e3f2fd;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border-left: 4px solid #2196F3;
+}
+
+.getting-started h4 {
+    color: #1976D2;
+    margin-top: 0;
+}
+
+.getting-started ol {
+    margin-left: 20px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
 .lesson, .challenge {
     background: #f8f9fa;
     padding: 12px;
@@ -85,12 +104,29 @@ body {
 
 .lesson p, .challenge p {
     font-size: 0.85rem;
-    line-height: 1.4;
+    line-height: 1.5;
+    margin: 6px 0;
+}
+
+.lesson .hint {
+    background: #fffbea;
+    border-left: 3px solid #ffd866;
+    padding: 8px;
+    margin-top: 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #856404;
 }
 
 .challenge {
     border-left-color: #ff6b6b;
     background: #fff5f5;
+}
+
+.challenge ul {
+    margin-left: 20px;
+    font-size: 0.85rem;
+    line-height: 1.6;
 }
 
 .lesson code, .challenge code {
@@ -133,6 +169,37 @@ body {
     margin-bottom: 10px;
     font-size: 1.1rem;
     flex-shrink: 0;
+}
+
+.replay-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #5568d3 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.replay-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+    background: linear-gradient(135deg, #5568d3 0%, #4451b8 100%);
+}
+
+.replay-btn:active {
+    transform: translateY(0);
+}
+
+.network-diagram {
+    position: relative;
 }
 
 #network-canvas {
@@ -226,6 +293,11 @@ body {
     max-height: 60px;
 }
 
+#console-input::placeholder {
+    color: #777;
+    opacity: 1;
+}
+
 /* 右エリア: コマンド・用語 */
 .commands-area {
     display: flex;
@@ -244,41 +316,75 @@ body {
 
 .command-buttons h2 {
     color: #0071BC;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     font-size: 1.1rem;
 }
 
-.cmd-btn {
-    display: block;
-    width: 100%;
-    padding: 10px;
+.command-help {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 15px;
+    padding: 8px;
+    background: #f0f4f8;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.cmd-group {
+    margin-bottom: 15px;
+}
+
+.cmd-group h3 {
+    font-size: 0.85rem;
+    color: #555;
     margin-bottom: 8px;
-    background: #0071BC;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.cmd-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #0071BC 0%, #005a94 100%);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
     font-family: 'Courier New', monospace;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: left;
+}
+
+.cmd-btn small {
+    font-size: 10px;
+    opacity: 0.9;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin-top: 4px;
 }
 
 .cmd-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 113, 188, 0.3);
-    background: #005a94;
+    box-shadow: 0 6px 12px rgba(0, 113, 188, 0.3);
+    background: linear-gradient(135deg, #005a94 0%, #004570 100%);
 }
 
 .cmd-btn:active {
     transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .cmd-btn.clear {
-    background: #ff6b6b;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
 }
 
 .cmd-btn.clear:hover {
-    background: #ee5a6f;
+    background: linear-gradient(135deg, #ee5a6f 0%, #dc4d5c 100%);
 }
 
 .glossary {

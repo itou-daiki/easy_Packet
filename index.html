@@ -19,36 +19,62 @@
         <aside class="tutorial-area">
             <h2>📚 チュートリアル</h2>
             <div id="tutorial-content">
-                <h3>ようこそ easyPacket へ！</h3>
-                <p>ネットワークコマンドを実際に試しながら、パケットの旅を可視化して学びましょう。</p>
+                <h3>🎓 ようこそ easyPacket へ！</h3>
+                <p>ネットワークの基礎を、実際にコマンドを試しながら楽しく学びましょう。</p>
+
+                <div class="getting-started">
+                    <h4>📝 使い方</h4>
+                    <ol>
+                        <li><strong>右側のボタン</strong>をクリックすると、コマンドが自動入力されます</li>
+                        <li><strong>中央のコンソール</strong>にコマンドを直接入力してもOK</li>
+                        <li><strong>Enterキー</strong>で実行、<strong>↑↓キー</strong>で履歴表示</li>
+                    </ol>
+                </div>
 
                 <div class="lesson">
-                    <h4>レッスン1: nslookup を試そう</h4>
-                    <p>ドメイン名からIPアドレスを調べるコマンドです。</p>
+                    <h4>🔰 レッスン1: nslookup を試そう</h4>
+                    <p><strong>何をするコマンド？</strong><br>
+                    ウェブサイトの名前（ドメイン名）から、実際の住所（IPアドレス）を調べます。</p>
+                    <p><strong>試してみよう：</strong></p>
                     <code>nslookup google.com</code>
-                    <p>右側のコマンドボタンをクリックするか、直接コンソールに入力してみましょう。</p>
+                    <p class="hint">💡 右側の「nslookup google.com」ボタンを押してみましょう！</p>
                 </div>
 
                 <div class="lesson">
-                    <h4>レッスン2: ping でサーバーに接続</h4>
-                    <p>サーバーが応答するか確認するコマンドです。</p>
+                    <h4>🔰 レッスン2: ping でサーバーに接続</h4>
+                    <p><strong>何をするコマンド？</strong><br>
+                    サーバーが元気に動いているか、応答時間はどのくらいかを確認します。</p>
+                    <p><strong>試してみよう：</strong></p>
                     <code>ping google.com</code>
+                    <p class="hint">💡 パケットが飛んでいくアニメーションも見られます！</p>
                 </div>
 
                 <div class="lesson">
-                    <h4>レッスン3: traceroute で経路を調査</h4>
-                    <p>パケットがどのルーターを経由するか追跡します。</p>
+                    <h4>🔰 レッスン3: traceroute で経路を調査</h4>
+                    <p><strong>何をするコマンド？</strong><br>
+                    あなたのPCからサーバーまで、パケットがどんな道を通るか追跡します。</p>
+                    <p><strong>試してみよう：</strong></p>
                     <code>traceroute google.com</code>
+                    <p class="hint">💡 少し時間がかかります。ルーターを1つずつ通過する様子を見てみましょう！</p>
+                </div>
+
+                <div class="lesson">
+                    <h4>🔰 レッスン4: ipconfig で自分の情報を確認</h4>
+                    <p><strong>何をするコマンド？</strong><br>
+                    あなたのPCのIPアドレスやネットワーク設定を表示します。</p>
+                    <p><strong>試してみよう：</strong></p>
+                    <code>ipconfig</code>
+                    <p class="hint">💡 あなたの実際のグローバルIPアドレスが表示されます！</p>
                 </div>
 
                 <div class="challenge">
-                    <h4>🎯 チャレンジ: トラブルシューティング</h4>
-                    <p>「broken-server.com」に接続できない原因を調べてください。</p>
-                    <ol>
-                        <li>nslookup でDNS解決を確認</li>
-                        <li>ping で接続を試す</li>
-                        <li>どんなエラーが出ましたか？</li>
-                    </ol>
+                    <h4>🎯 チャレンジ問題</h4>
+                    <p>すべてのレッスンが終わったら、試してみましょう：</p>
+                    <ul>
+                        <li>yahoo.co.jp のIPアドレスは？</li>
+                        <li>github.com までの経路は何ホップ？</li>
+                        <li>好きなウェブサイトで試してみよう！</li>
+                    </ul>
                 </div>
             </div>
         </aside>
@@ -65,7 +91,7 @@
                 <div id="console-output"></div>
                 <div class="console-input-wrapper">
                     <span class="prompt">$ </span>
-                    <textarea id="console-input" placeholder="コマンドを入力してください (例: ping google.com)"></textarea>
+                    <textarea id="console-input" placeholder="コマンドを入力してください (例: ping google.com) ↑↓キーで履歴表示"></textarea>
                 </div>
             </div>
         </main>
@@ -74,13 +100,38 @@
         <aside class="commands-area">
             <div class="command-buttons">
                 <h2>⚡ クイックコマンド</h2>
-                <button class="cmd-btn" data-cmd="nslookup google.com">nslookup google.com</button>
-                <button class="cmd-btn" data-cmd="ping google.com">ping google.com</button>
-                <button class="cmd-btn" data-cmd="ping github.com">ping github.com</button>
-                <button class="cmd-btn" data-cmd="traceroute google.com">traceroute google.com</button>
-                <button class="cmd-btn" data-cmd="ipconfig">ipconfig</button>
-                <button class="cmd-btn" data-cmd="ping broken-server.com">ping broken-server.com</button>
-                <button class="cmd-btn clear" data-cmd="clear">clear</button>
+                <p class="command-help">クリックするとコマンドが実行されます</p>
+
+                <div class="cmd-group">
+                    <h3>基本コマンド</h3>
+                    <button class="cmd-btn" data-cmd="nslookup google.com" title="ドメイン名からIPアドレスを調べる">
+                        📍 nslookup google.com
+                        <small>IPアドレスを調べる</small>
+                    </button>
+                    <button class="cmd-btn" data-cmd="ping google.com" title="サーバーの応答を確認">
+                        🏓 ping google.com
+                        <small>応答を確認</small>
+                    </button>
+                    <button class="cmd-btn" data-cmd="traceroute google.com" title="パケットの経路を追跡">
+                        🗺️ traceroute google.com
+                        <small>経路を追跡</small>
+                    </button>
+                    <button class="cmd-btn" data-cmd="ipconfig" title="自分のIPアドレスを表示">
+                        💻 ipconfig
+                        <small>自分の情報を表示</small>
+                    </button>
+                </div>
+
+                <div class="cmd-group">
+                    <h3>その他</h3>
+                    <button class="cmd-btn" data-cmd="ping github.com" title="GitHubサーバーに接続">
+                        🐙 ping github.com
+                    </button>
+                    <button class="cmd-btn clear" data-cmd="clear" title="画面をクリア">
+                        🧹 clear
+                        <small>画面をクリア</small>
+                    </button>
+                </div>
             </div>
 
             <div class="glossary">
@@ -88,6 +139,10 @@
                 <div class="term">
                     <h4>IPアドレス</h4>
                     <p>ネットワーク上のコンピュータを識別する番号。住所のようなもの。</p>
+                </div>
+                <div class="term">
+                    <h4>ドメイン名</h4>
+                    <p>Webサイトの住所を表す名前。例: google.com、github.com。人間が覚えやすいように作られている。</p>
                 </div>
                 <div class="term">
                     <h4>DNS</h4>

@@ -84,25 +84,58 @@ class EasyPacketApp {
 
         // コマンドを実行
         const results = await this.simulator.execute(commandLine);
+        
+        // コマンドの種類とドメインを取得
+        const parts = commandLine.split(/\s+/);
+        const cmd = parts[0].toLowerCase();
+        const domain = parts[1];
 
-        // 結果を表示
+        // 経路データを収集
+        let routeData = null;
+        const hopDataList = [];
+
+        // 結果を1行ずつ表示
         for (const result of results) {
             if (result.type === 'clear') {
                 this.clearConsole();
             } else {
                 this.printLine(result);
+                this.scrollToBottom();
 
-                // アニメーション制御
+                // アニメーション制御（最初のコマンド行でのみトリガー）
                 if (result.type === 'command') {
-                    const cmd = commandLine.split(/\s+/)[0].toLowerCase();
-                    this.triggerAnimation(cmd, commandLine);
+                    // ここではまだアニメーションを開始しない
                 }
 
-                // tracerouteの場合、ホップごとにアニメーション
+                // tracerouteのホップデータを収集
                 if (result.hopData) {
+                    hopDataList.push(result.hopData);
                     await this.sleep(50);
                 }
+
+                // 1行ずつ表示する遅延（コマンド行以外）
+                if (result.type !== 'command') {
+                    await this.sleep(200);
+                }
             }
+        }
+
+        // すべての出力が終わった後にアニメーションを開始
+        if (cmd === 'traceroute' || cmd === 'tracert') {
+            if (hopDataList.length > 0) {
+                routeData = hopDataList;
+            }
+            this.visualizer.executeAnimation({ type: 'traceroute', route: routeData });
+        } else if (cmd === 'ping') {
+            // pingの場合もtracerouteデータがあれば使用
+            if (this.simulator.routesData[domain]) {
+                routeData = this.simulator.routesData[domain];
+            }
+            this.visualizer.executeAnimation({ type: 'ping', route: routeData });
+        } else if (cmd === 'nslookup') {
+            this.visualizer.executeAnimation({ type: 'nslookup' });
+        } else if (cmd === 'ipconfig' || cmd === 'ifconfig' || cmd === 'whoami') {
+            this.visualizer.executeAnimation({ type: 'ipconfig' });
         }
 
         this.scrollToBottom();
@@ -110,35 +143,8 @@ class EasyPacketApp {
     }
 
     triggerAnimation(command, fullCommand) {
-        const domain = fullCommand.split(/\s+/)[1];
-
-        switch (command) {
-            case 'nslookup':
-                this.visualizer.animateNslookup();
-                break;
-
-            case 'ping':
-                if (domain === 'broken-server.com') {
-                    this.visualizer.animateTimeout();
-                } else {
-                    this.visualizer.animatePing();
-                }
-                break;
-
-            case 'traceroute':
-            case 'tracert':
-                // routes.jsonから経路の長さを取得
-                this.simulator.routesData[domain]?.length || 4;
-                const hopCount = this.simulator.routesData[domain]?.length || 4;
-                this.visualizer.animateTraceroute(hopCount);
-                break;
-
-            case 'ipconfig':
-            case 'ifconfig':
-            case 'whoami':
-                this.visualizer.animateIpconfig();
-                break;
-        }
+        // この関数は現在使用されていません
+        // executeCommand内で直接visualizer.executeAnimationを呼び出しています
     }
 
     printLine(result) {

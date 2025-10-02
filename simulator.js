@@ -26,25 +26,29 @@ class CommandSimulator {
 
         await this.sleep(500);
 
-        if (!this.dnsData[domain]) {
-            results.push({ type: 'error', text: `*** ${domain} が見つかりません: Non-existent domain` });
+        try {
+            // DNS over HTTPS (Google Public DNS) を使用して実際のIPアドレスを取得
+            const response = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
+            const data = await response.json();
+
+            if (data.Status !== 0 || !data.Answer || data.Answer.length === 0) {
+                results.push({ type: 'error', text: `*** ${domain} が見つかりません: Non-existent domain` });
+                return results;
+            }
+
+            const ip = data.Answer[0].data;
+
+            results.push({ type: 'info', text: 'サーバー:  dns.google' });
+            results.push({ type: 'info', text: 'Address:  8.8.8.8' });
+            results.push({ type: 'success', text: '' });
+            results.push({ type: 'success', text: `名前:    ${domain}` });
+            results.push({ type: 'success', text: `Address: ${ip}` });
+
+            return results;
+        } catch (error) {
+            results.push({ type: 'error', text: `*** DNS問い合わせに失敗しました: ${error.message}` });
             return results;
         }
-
-        const ip = this.dnsData[domain];
-
-        if (ip === 'TIMEOUT') {
-            results.push({ type: 'error', text: `*** ${domain} への接続がタイムアウトしました` });
-            return results;
-        }
-
-        results.push({ type: 'info', text: 'サーバー:  dns.google' });
-        results.push({ type: 'info', text: 'Address:  8.8.8.8' });
-        results.push({ type: 'success', text: '' });
-        results.push({ type: 'success', text: `名前:    ${domain}` });
-        results.push({ type: 'success', text: `Address: ${ip}` });
-
-        return results;
     }
 
     // ping コマンド
@@ -54,42 +58,40 @@ class CommandSimulator {
 
         await this.sleep(300);
 
-        if (!this.dnsData[domain]) {
-            results.push({ type: 'error', text: `ping: ${domain}: Name or service not known` });
+        try {
+            // DNS over HTTPS を使用して実際のIPアドレスを取得
+            const response = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
+            const data = await response.json();
+
+            if (data.Status !== 0 || !data.Answer || data.Answer.length === 0) {
+                results.push({ type: 'error', text: `ping: ${domain}: Name or service not known` });
+                return results;
+            }
+
+            const ip = data.Answer[0].data;
+
+            results.push({ type: 'info', text: `PING ${domain} (${ip}): 56 data bytes` });
+
+            // 4回のpingを送信（シミュレーション）
+            for (let i = 0; i < 4; i++) {
+                await this.sleep(800);
+                const time = (Math.random() * 35 + 15).toFixed(1);
+                const ttl = Math.floor(Math.random() * 10 + 54);
+                results.push({
+                    type: 'success',
+                    text: `64 bytes from ${ip}: icmp_seq=${i} ttl=${ttl} time=${time} ms`
+                });
+            }
+
+            results.push({ type: 'success', text: '' });
+            results.push({ type: 'success', text: `--- ${domain} ping statistics ---` });
+            results.push({ type: 'success', text: '4 packets transmitted, 4 packets received, 0% packet loss' });
+
+            return results;
+        } catch (error) {
+            results.push({ type: 'error', text: `ping: ${domain}: DNS解決に失敗しました` });
             return results;
         }
-
-        const ip = this.dnsData[domain];
-
-        if (ip === 'TIMEOUT') {
-            results.push({ type: 'info', text: `PING ${domain}: 56 data bytes` });
-            results.push({ type: 'error', text: 'Request timeout for icmp_seq 0' });
-            results.push({ type: 'error', text: 'Request timeout for icmp_seq 1' });
-            results.push({ type: 'error', text: 'Request timeout for icmp_seq 2' });
-            results.push({ type: 'error', text: '' });
-            results.push({ type: 'error', text: `--- ${domain} ping statistics ---` });
-            results.push({ type: 'error', text: '3 packets transmitted, 0 packets received, 100% packet loss' });
-            return results;
-        }
-
-        results.push({ type: 'info', text: `PING ${domain} (${ip}): 56 data bytes` });
-
-        // 4回のpingを送信
-        for (let i = 0; i < 4; i++) {
-            await this.sleep(800);
-            const time = (Math.random() * 35 + 15).toFixed(1);
-            const ttl = Math.floor(Math.random() * 10 + 54);
-            results.push({
-                type: 'success',
-                text: `64 bytes from ${ip}: icmp_seq=${i} ttl=${ttl} time=${time} ms`
-            });
-        }
-
-        results.push({ type: 'success', text: '' });
-        results.push({ type: 'success', text: `--- ${domain} ping statistics ---` });
-        results.push({ type: 'success', text: '4 packets transmitted, 4 packets received, 0% packet loss' });
-
-        return results;
     }
 
     // traceroute コマンド
@@ -99,40 +101,48 @@ class CommandSimulator {
 
         await this.sleep(500);
 
-        if (!this.dnsData[domain]) {
-            results.push({ type: 'error', text: `traceroute: ${domain}: Name or service not known` });
+        try {
+            // DNS over HTTPS を使用して実際のIPアドレスを取得
+            const response = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
+            const data = await response.json();
+
+            if (data.Status !== 0 || !data.Answer || data.Answer.length === 0) {
+                results.push({ type: 'error', text: `traceroute: ${domain}: Name or service not known` });
+                return results;
+            }
+
+            const ip = data.Answer[0].data;
+
+            results.push({ type: 'info', text: `traceroute to ${domain} (${ip}), 30 hops max, 60 byte packets` });
+
+            // 実際の経路情報は取得できないため、典型的な経路をシミュレーション
+            const routes = this.routesData[domain] || [
+                { ip: "192.168.1.1", name: "my-router.local", time: 1 },
+                { ip: "10.0.0.1", name: "isp-gateway.net", time: 10 },
+                { ip: ip, name: domain, time: 25 }
+            ];
+
+            results.push({ type: 'info', text: '(※経路情報はシミュレーションです)' });
+
+            for (let i = 0; i < routes.length; i++) {
+                await this.sleep(1000);
+                const hop = routes[i];
+                const time1 = (hop.time + Math.random() * 2).toFixed(3);
+                const time2 = (hop.time + Math.random() * 2).toFixed(3);
+                const time3 = (hop.time + Math.random() * 2).toFixed(3);
+
+                results.push({
+                    type: 'success',
+                    text: `${i + 1}  ${hop.name} (${hop.ip})  ${time1} ms  ${time2} ms  ${time3} ms`,
+                    hopData: hop
+                });
+            }
+
+            return results;
+        } catch (error) {
+            results.push({ type: 'error', text: `traceroute: ${domain}: DNS解決に失敗しました` });
             return results;
         }
-
-        const ip = this.dnsData[domain];
-
-        if (ip === 'TIMEOUT') {
-            results.push({ type: 'error', text: `traceroute to ${domain}: タイムアウト` });
-            return results;
-        }
-
-        results.push({ type: 'info', text: `traceroute to ${domain} (${ip}), 30 hops max, 60 byte packets` });
-
-        const routes = this.routesData[domain] || [
-            { ip: "192.168.1.1", name: "my-router.local", time: 1 },
-            { ip: ip, name: domain, time: 20 }
-        ];
-
-        for (let i = 0; i < routes.length; i++) {
-            await this.sleep(1000);
-            const hop = routes[i];
-            const time1 = (hop.time + Math.random() * 2).toFixed(3);
-            const time2 = (hop.time + Math.random() * 2).toFixed(3);
-            const time3 = (hop.time + Math.random() * 2).toFixed(3);
-
-            results.push({
-                type: 'success',
-                text: `${i + 1}  ${hop.name} (${hop.ip})  ${time1} ms  ${time2} ms  ${time3} ms`,
-                hopData: hop
-            });
-        }
-
-        return results;
     }
 
     // ipconfig コマンド
@@ -147,16 +157,17 @@ class CommandSimulator {
             const data = await response.json();
 
             results.push({ type: 'info', text: 'Windows IP Configuration' });
+            results.push({ type: 'info', text: '(※ローカル情報は学習用の架空のデータです)' });
             results.push({ type: 'success', text: '' });
             results.push({ type: 'success', text: 'Ethernet adapter:' });
             results.push({ type: 'success', text: '   IPv4 Address: 192.168.1.100' });
             results.push({ type: 'success', text: '   Subnet Mask: 255.255.255.0' });
             results.push({ type: 'success', text: '   Default Gateway: 192.168.1.1' });
             results.push({ type: 'success', text: '' });
-            results.push({ type: 'info', text: `Global IP Address: ${data.ip}` });
+            results.push({ type: 'info', text: `Global IP Address: ${data.ip} (実際のIPアドレス)` });
         } catch (error) {
             results.push({ type: 'error', text: 'グローバルIPアドレスの取得に失敗しました' });
-            results.push({ type: 'info', text: 'ローカルIP: 192.168.1.100' });
+            results.push({ type: 'info', text: 'ローカルIP: 192.168.1.100 (学習用の架空のデータ)' });
         }
 
         return results;
@@ -190,20 +201,32 @@ class CommandSimulator {
         switch (command) {
             case 'nslookup':
                 if (args.length === 0) {
-                    return [{ type: 'error', text: '使い方: nslookup <ドメイン名>' }];
+                    return [
+                        { type: 'error', text: '❌ ドメイン名が指定されていません' },
+                        { type: 'info', text: '💡 使い方: nslookup <ドメイン名>' },
+                        { type: 'info', text: '例: nslookup google.com' }
+                    ];
                 }
                 return await this.nslookup(args[0]);
 
             case 'ping':
                 if (args.length === 0) {
-                    return [{ type: 'error', text: '使い方: ping <ドメイン名>' }];
+                    return [
+                        { type: 'error', text: '❌ ドメイン名が指定されていません' },
+                        { type: 'info', text: '💡 使い方: ping <ドメイン名>' },
+                        { type: 'info', text: '例: ping google.com' }
+                    ];
                 }
                 return await this.ping(args[0]);
 
             case 'traceroute':
             case 'tracert':
                 if (args.length === 0) {
-                    return [{ type: 'error', text: '使い方: traceroute <ドメイン名>' }];
+                    return [
+                        { type: 'error', text: '❌ ドメイン名が指定されていません' },
+                        { type: 'info', text: '💡 使い方: traceroute <ドメイン名>' },
+                        { type: 'info', text: '例: traceroute google.com' }
+                    ];
                 }
                 return await this.traceroute(args[0]);
 
@@ -221,10 +244,11 @@ class CommandSimulator {
                 return await this.help();
 
             default:
-                return [{
-                    type: 'error',
-                    text: `'${command}' は認識されていません。'help' でコマンド一覧を表示できます。`
-                }];
+                return [
+                    { type: 'error', text: `❌ '${command}' は認識されていません` },
+                    { type: 'info', text: '💡 利用可能なコマンド: nslookup, ping, traceroute, ipconfig, clear, help' },
+                    { type: 'info', text: '詳しくは「help」と入力してください' }
+                ];
         }
     }
 
