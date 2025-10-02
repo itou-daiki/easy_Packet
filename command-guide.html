@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>コマンド解説 - easyPacket</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f4f8;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: #0071BC;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: #0071BC;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .back-link:hover {
+            background: #005a94;
+        }
+
+        .command-section {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .command-section h2 {
+            color: #0071BC;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .command-section h3 {
+            color: #333;
+            font-size: 1.1rem;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .syntax {
+            background: #2d2d2d;
+            color: #a9dc76;
+            padding: 12px 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            font-size: 0.95rem;
+        }
+
+        .example {
+            background: #f0f8ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .example h4 {
+            color: #1976D2;
+            margin-bottom: 8px;
+        }
+
+        .warning {
+            background: #fff7ed;
+            border-left: 4px solid #d97706;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .warning h4 {
+            color: #d97706;
+            margin-bottom: 8px;
+        }
+
+        .tip {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .tip h4 {
+            color: #059669;
+            margin-bottom: 8px;
+        }
+
+        ul, ol {
+            margin-left: 25px;
+            margin-top: 10px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📘 コマンド解説ガイド</h1>
+        <p>easyPacketで使用できるネットワークコマンドの詳細な説明</p>
+    </div>
+
+    <div class="container">
+        <a href="index.html" class="back-link">← アプリに戻る</a>
+
+        <!-- nslookup -->
+        <div class="command-section" id="nslookup">
+            <h2>🔍 nslookup - ドメイン名からIPアドレスを調べる</h2>
+
+            <h3>📝 基本構文</h3>
+            <div class="syntax">nslookup ドメイン名</div>
+
+            <h3>📖 説明</h3>
+            <p>nslookup（Name Server Lookup）は、ドメイン名（例: google.com）をIPアドレス（例: 172.217.175.46）に変換するコマンドです。インターネット上のコンピュータは実際にはIPアドレスで通信していますが、人間が覚えやすいようにドメイン名が使われています。このコマンドは、その変換作業（DNS解決）を確認できます。</p>
+
+            <div class="example">
+                <h4>✅ 正しい例</h4>
+                <div class="syntax">nslookup google.com</div>
+                <div class="syntax">nslookup github.com</div>
+                <div class="syntax">nslookup yahoo.co.jp</div>
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ よくある間違い</h4>
+                <p><strong>❌ 間違い:</strong></p>
+                <div class="syntax">nslookup https://google.com</div>
+                <div class="syntax">nslookup www.google.com/search</div>
+                <p><strong>理由:</strong> nslookupはドメイン名のみを指定します。<code>https://</code>などのプロトコルや、<code>/search</code>などのパス、<code>www.</code>などのサブドメインは通常必要ありません。</p>
+            </div>
+
+            <div class="tip">
+                <h4>💡 豆知識</h4>
+                <ul>
+                    <li>DNSサーバーは、インターネットの「電話帳」のような役割をしています</li>
+                    <li>1つのドメイン名が複数のIPアドレスを持つことがあります（負荷分散のため）</li>
+                    <li>DNSの結果はキャッシュされるため、変更が反映されるまで時間がかかることがあります</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ping -->
+        <div class="command-section" id="ping">
+            <h2>🏓 ping - サーバーの応答を確認する</h2>
+
+            <h3>📝 基本構文</h3>
+            <div class="syntax">ping ドメイン名</div>
+
+            <h3>📖 説明</h3>
+            <p>pingは、指定したサーバーが「生きているか」を確認するコマンドです。小さなデータパケットを送信して、サーバーからの応答があるかどうか、また応答にかかる時間（レイテンシ）を測定します。ネットワークの問題を診断する際に最もよく使われるコマンドの一つです。</p>
+
+            <div class="example">
+                <h4>✅ 正しい例</h4>
+                <div class="syntax">ping google.com</div>
+                <div class="syntax">ping github.com</div>
+                <div class="syntax">ping 8.8.8.8</div>
+                <p><small>※ 8.8.8.8 はGoogleの公開DNSサーバーのIPアドレスです</small></p>
+            </div>
+
+            <h3>📊 出力の見方</h3>
+            <ul>
+                <li><strong>icmp_seq:</strong> パケットの連番</li>
+                <li><strong>ttl (Time To Live):</strong> パケットが経由できるルーターの最大数</li>
+                <li><strong>time:</strong> 応答時間（ミリ秒）。小さいほど高速</li>
+            </ul>
+
+            <div class="tip">
+                <h4>💡 応答時間の目安</h4>
+                <ul>
+                    <li><strong>1-20ms:</strong> 非常に良好（近距離のサーバー）</li>
+                    <li><strong>20-50ms:</strong> 良好（国内サーバー）</li>
+                    <li><strong>50-100ms:</strong> 普通（遠距離サーバー）</li>
+                    <li><strong>100ms以上:</strong> やや遅い（海外サーバーや混雑時）</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ よくある間違い</h4>
+                <p><strong>❌ 間違い:</strong></p>
+                <div class="syntax">ping https://example.com/about</div>
+                <p><strong>理由:</strong> pingはドメイン名またはIPアドレスのみを指定します。URL形式は使えません。</p>
+            </div>
+        </div>
+
+        <!-- traceroute -->
+        <div class="command-section" id="traceroute">
+            <h2>🗺️ traceroute - パケットの経路を追跡する</h2>
+
+            <h3>📝 基本構文</h3>
+            <div class="syntax">traceroute ドメイン名</div>
+
+            <h3>📖 説明</h3>
+            <p>tracerouteは、あなたのPCから目的地のサーバーまで、パケットがどのような経路（ルーター）を通って到達するかを表示するコマンドです。インターネットは複数のルーターを経由して通信しており、その「道のり」を可視化できます。</p>
+
+            <div class="example">
+                <h4>✅ 正しい例</h4>
+                <div class="syntax">traceroute google.com</div>
+                <div class="syntax">traceroute github.com</div>
+            </div>
+
+            <h3>📊 出力の見方</h3>
+            <ul>
+                <li><strong>1, 2, 3...:</strong> ホップ番号（経由するルーターの順番）</li>
+                <li><strong>ルーター名 (IPアドレス):</strong> 経由したルーターの情報</li>
+                <li><strong>3つの数値 (ms):</strong> 各ルーターまでの往復時間（3回測定）</li>
+            </ul>
+
+            <div class="tip">
+                <h4>💡 tracerouteでわかること</h4>
+                <ul>
+                    <li>あなたのPCからサーバーまでの物理的な経路</li>
+                    <li>どのルーターで遅延が発生しているか</li>
+                    <li>パケットがどのISP（プロバイダ）を経由しているか</li>
+                    <li>海外サーバーの場合、どの国を経由しているか</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ よくある間違い</h4>
+                <p><strong>❌ 間違い:</strong></p>
+                <div class="syntax">traceroute https://kou.oita-ed.jp/hita/</div>
+                <p><strong>✅ 正しい:</strong></p>
+                <div class="syntax">traceroute kou.oita-ed.jp</div>
+                <p><strong>理由:</strong> <code>https://</code>というプロトコルや<code>/hita/</code>というパスは不要です。ドメイン名のみを指定してください。</p>
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ 注意事項</h4>
+                <p>tracerouteは実行に時間がかかります（数秒～数十秒）。各ルーターに順番に問い合わせを行うため、ホップ数が多いほど時間がかかります。</p>
+            </div>
+        </div>
+
+        <!-- ipconfig -->
+        <div class="command-section" id="ipconfig">
+            <h2>💻 ipconfig - 自分のIPアドレスを確認する</h2>
+
+            <h3>📝 基本構文</h3>
+            <div class="syntax">ipconfig</div>
+
+            <h3>📖 説明</h3>
+            <p>ipconfigは、あなたのPCのネットワーク設定情報を表示するコマンドです。自分のIPアドレス、サブネットマスク、デフォルトゲートウェイ（ルーター）の情報などが確認できます。</p>
+
+            <h3>📊 出力の見方</h3>
+            <ul>
+                <li><strong>IPv4 Address:</strong> あなたのPCのローカルIPアドレス（192.168.x.xなど）</li>
+                <li><strong>Subnet Mask:</strong> ネットワークの範囲を示すマスク</li>
+                <li><strong>Default Gateway:</strong> インターネットへの出口となるルーター</li>
+                <li><strong>Global IP Address:</strong> インターネット上でのあなたのIPアドレス（実際のもの）</li>
+            </ul>
+
+            <div class="tip">
+                <h4>💡 IPアドレスの種類</h4>
+                <ul>
+                    <li><strong>ローカルIP:</strong> 家庭内や学校内だけで使われるIPアドレス（192.168.x.x、10.x.x.xなど）</li>
+                    <li><strong>グローバルIP:</strong> インターネット全体で一意のIPアドレス。easyPacketでは実際のものを表示します</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>⚠️ プライバシーについて</h4>
+                <p>グローバルIPアドレスは、あなたのおおよその位置情報を特定できる情報です。他人に教える際は注意してください。ただし、このアプリで表示される情報は学習目的であり、外部には送信されません。</p>
+            </div>
+        </div>
+
+        <!-- help -->
+        <div class="command-section" id="help">
+            <h2>❓ help - コマンド一覧を表示</h2>
+
+            <h3>📝 基本構文</h3>
+            <div class="syntax">help</div>
+
+            <h3>📖 説明</h3>
+            <p>利用可能なコマンドの一覧を表示します。</p>
+        </div>
+
+        <!-- clear -->
+        <div class="command-section" id="clear">
+            <h2>🧹 clear - 画面をクリア</h2>
+
+            <h3>📝 基本構文</h3>
+            <div class="syntax">clear</div>
+
+            <h3>📖 説明</h3>
+            <p>コンソール画面の表示内容をすべて消去します。実行履歴は残るので、↑キーで過去のコマンドを呼び出せます。</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Created by Dit-Lab. (Daiki ITO) | easyPacket - ネットワーク学習Webアプリ</p>
+    </div>
+</body>
+</html>
