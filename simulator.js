@@ -193,6 +193,43 @@ class CommandSimulator {
     }
 
     // コマンド実行
+    // URLからドメイン名を抽出
+    extractDomain(input) {
+        // https://, http://, /などを削除
+        let domain = input
+            .replace(/^https?:\/\//, '')  // プロトコルを削除
+            .replace(/^www\./, '')         // wwwを削除
+            .replace(/\/.*$/, '')          // パス以降を削除
+            .replace(/:\d+$/, '')          // ポート番号を削除
+            .trim();
+        
+        return domain;
+    }
+
+    // 入力を正規化して修正案を提示
+    // URL形式をチェックして修正案を提示
+    checkAndSuggestDomain(input, command) {
+        const original = input;
+        const domain = this.extractDomain(input);
+        
+        // URL形式が検出された場合
+        if (domain !== original) {
+            return {
+                hasError: true,
+                results: [
+                    { type: 'error', text: `❌ URL形式では実行できません: ${original}` },
+                    { type: 'info', text: '' },
+                    { type: 'info', text: '💡 正しい形式はドメイン名のみです：' },
+                    { type: 'success', text: `   ${command} ${domain}` },
+                    { type: 'info', text: '' },
+                    { type: 'info', text: 'コマンドを修正して再度実行してください。' }
+                ]
+            };
+        }
+        
+        return { hasError: false, results: [] };
+    }
+
     async execute(commandLine) {
         const parts = commandLine.trim().split(/\s+/);
         const command = parts[0].toLowerCase();
@@ -207,6 +244,11 @@ class CommandSimulator {
                         { type: 'info', text: '例: nslookup google.com' }
                     ];
                 }
+                // URL形式チェック
+                const nslookupCheck = this.checkAndSuggestDomain(args[0], 'nslookup');
+                if (nslookupCheck.hasError) {
+                    return nslookupCheck.results;
+                }
                 return await this.nslookup(args[0]);
 
             case 'ping':
@@ -216,6 +258,11 @@ class CommandSimulator {
                         { type: 'info', text: '💡 使い方: ping <ドメイン名>' },
                         { type: 'info', text: '例: ping google.com' }
                     ];
+                }
+                // URL形式チェック
+                const pingCheck = this.checkAndSuggestDomain(args[0], 'ping');
+                if (pingCheck.hasError) {
+                    return pingCheck.results;
                 }
                 return await this.ping(args[0]);
 
@@ -227,6 +274,11 @@ class CommandSimulator {
                         { type: 'info', text: '💡 使い方: traceroute <ドメイン名>' },
                         { type: 'info', text: '例: traceroute google.com' }
                     ];
+                }
+                // URL形式チェック
+                const tracerouteCheck = this.checkAndSuggestDomain(args[0], 'traceroute');
+                if (tracerouteCheck.hasError) {
+                    return tracerouteCheck.results;
                 }
                 return await this.traceroute(args[0]);
 
