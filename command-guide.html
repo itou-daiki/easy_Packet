@@ -318,6 +318,61 @@
                 <h4>⚠️ プライバシーについて</h4>
                 <p>グローバルIPアドレスは、あなたのおおよその位置情報を特定できる情報です。他人に教える際は注意してください。ただし、このアプリで表示される情報は学習目的であり、外部には送信されません。</p>
             </div>
+
+            <h3>🖥️ 実際のPCでIPアドレスを調べる方法</h3>
+            <p>easyPacket以外で、実際のPCのIPアドレスを確認する方法を紹介します。</p>
+
+            <div class="example">
+                <h4>🪟 Windows の場合</h4>
+                <p><strong>方法1: コマンドプロンプトを使う</strong></p>
+                <ol>
+                    <li>「Windowsキー + R」を押す</li>
+                    <li>「cmd」と入力してEnterキーを押す</li>
+                    <li>コマンドプロンプトが開いたら、以下のコマンドを入力：
+                        <div class="syntax">ipconfig</div>
+                    </li>
+                    <li>「IPv4 アドレス」の項目を確認</li>
+                </ol>
+                <p><strong>方法2: 設定画面から確認</strong></p>
+                <ol>
+                    <li>「設定」→「ネットワークとインターネット」を開く</li>
+                    <li>接続中のネットワーク（Wi-Fiまたはイーサネット）をクリック</li>
+                    <li>「プロパティ」をクリック</li>
+                    <li>「IPv4 アドレス」の項目を確認</li>
+                </ol>
+            </div>
+
+            <div class="example">
+                <h4>🍎 Mac の場合</h4>
+                <p><strong>方法1: ターミナルを使う</strong></p>
+                <ol>
+                    <li>「command + スペース」でSpotlight検索を開く</li>
+                    <li>「ターミナル」と入力してEnterキーを押す</li>
+                    <li>ターミナルが開いたら、以下のコマンドを入力：
+                        <div class="syntax">ifconfig</div>
+                        または
+                        <div class="syntax">ipconfig getifaddr en0</div>
+                        <small>※ en0はWi-Fi接続の場合。有線接続の場合はen1を使います</small>
+                    </li>
+                </ol>
+                <p><strong>方法2: システム環境設定から確認</strong></p>
+                <ol>
+                    <li>Appleメニュー →「システム環境設定（またはシステム設定）」を開く</li>
+                    <li>「ネットワーク」をクリック</li>
+                    <li>接続中のネットワーク（Wi-Fiまたはイーサネット）を選択</li>
+                    <li>「IPアドレス」の項目を確認</li>
+                </ol>
+            </div>
+
+            <div class="tip">
+                <h4>💡 グローバルIPアドレスを調べる方法</h4>
+                <p>上記の方法で確認できるのはローカルIPアドレスです。グローバルIPアドレスを確認するには：</p>
+                <ul>
+                    <li>Webブラウザで「確認くん」などのサイトにアクセス</li>
+                    <li>または、easyPacketの「ipconfig」コマンドで確認</li>
+                    <li>コマンドラインから: <code>curl ifconfig.me</code> (WindowsのPowerShellやMacのターミナルで使用可能)</li>
+                </ul>
+            </div>
         </div>
 
         <!-- help -->
