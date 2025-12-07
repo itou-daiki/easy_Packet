@@ -63,28 +63,73 @@ class NetworkVisualizer {
         }
     }
 
-    // 動的にノードを生成（tracerouteの経路に基づく）
+    // 動的にノードを生成（tracerouteの経路に基づく）- ジグザグ配置で見やすく
     generateNodes(routeData) {
         const nodes = [];
-        const startY = this.height / 2;
-        const spacing = Math.min(150, (this.width - 100) / (routeData.length + 1));
+        const centerY = this.height / 2;
+        const verticalOffset = 70; // 上下の振れ幅
 
+        // 横幅を十分に確保（最小120pxの間隔）
+        const totalHops = routeData.length + 1; // PC + 経由地
+        const spacing = Math.max(120, Math.min(180, (this.width - 100) / totalHops));
+
+        // 開始ノード（PC）
         nodes.push({
             x: 50,
-            y: startY,
-            label: '🖥️ あなたのPC',
+            y: centerY,
+            label: '🖥️ PC',
+            fullLabel: 'あなたのPC',
             color: '#667eea',
-            name: 'pc'
+            name: 'pc',
+            hopNumber: 0
         });
 
+        // 経由地のノードをジグザグ配置
         routeData.forEach((hop, index) => {
+            const hopNumber = index + 1;
+            const isEven = hopNumber % 2 === 0;
+
+            // ノードタイプを判定してアイコンと色を設定
+            let icon = '🔀';
+            let color = '#48bb78';
+            let shortLabel = `#${hopNumber}`;
+
+            if (hop.name.includes('home-router') || hop.name.includes('my-router')) {
+                icon = '🏠';
+                color = '#667eea';
+                shortLabel = 'ホーム';
+            } else if (hop.name.includes('gateway') || hop.name.includes('isp')) {
+                icon = '🌐';
+                color = '#ed8936';
+                shortLabel = 'ISP';
+            } else if (hop.name.includes('international') || hop.name.includes('ix')) {
+                icon = '🌍';
+                color = '#f56565';
+                shortLabel = 'IX';
+            } else if (hop.name.includes('backbone')) {
+                icon = '⚡';
+                color = '#9f7aea';
+                shortLabel = 'BB';
+            } else if (hop.name.includes('edge') || hop.name.includes('cdn')) {
+                icon = '☁️';
+                color = '#4299e1';
+                shortLabel = 'CDN';
+            } else if (index === routeData.length - 1) {
+                icon = '🎯';
+                color = '#38b2ac';
+                shortLabel = '目的地';
+            }
+
             nodes.push({
-                x: 50 + spacing * (index + 1),
-                y: startY,
-                label: hop.name.length > 20 ? hop.name.substring(0, 17) + '...' : hop.name,
-                color: '#48bb78',
+                x: 50 + spacing * hopNumber,
+                y: isEven ? centerY + verticalOffset : centerY - verticalOffset,
+                label: `${icon} ${shortLabel}`,
+                fullLabel: hop.name,
+                color: color,
                 name: hop.name,
-                ip: hop.ip
+                ip: hop.ip,
+                hopNumber: hopNumber,
+                time: hop.time
             });
         });
 
@@ -152,17 +197,35 @@ class NetworkVisualizer {
         this.ctx.lineWidth = 3;
         this.ctx.stroke();
 
-        // ラベル
+        // ホップ番号を円の中に表示（PCを除く）
+        if (node.hopNumber > 0) {
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = 'bold 11px sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(node.hopNumber, node.x, node.y);
+        }
+
+        // ラベル（上下の位置を調整）
+        const labelY = node.y > this.height / 2 ? node.y + 38 : node.y - 28;
         this.ctx.fillStyle = '#2d3748';
-        this.ctx.font = '11px sans-serif';
+        this.ctx.font = 'bold 12px sans-serif';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText(node.label, node.x, node.y + 35);
-        
-        // IPアドレス表示（ある場合）
-        if (node.ip) {
-            this.ctx.font = '9px monospace';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(node.label, node.x, labelY);
+
+        // 詳細情報（ホスト名）を小さく表示
+        if (node.fullLabel && node.fullLabel !== node.label) {
+            const detailY = labelY + 13;
+            this.ctx.font = '9px sans-serif';
             this.ctx.fillStyle = '#718096';
-            this.ctx.fillText(node.ip, node.x, node.y + 48);
+
+            // 長すぎる場合は省略
+            let displayName = node.fullLabel;
+            if (displayName.length > 18) {
+                displayName = displayName.substring(0, 15) + '...';
+            }
+            this.ctx.fillText(displayName, node.x, detailY);
         }
     }
 
@@ -253,16 +316,20 @@ class NetworkVisualizer {
         if (routeData && routeData.length > 0) {
             this.currentRoute = routeData;
             this.drawStaticNetwork();
-            
+
             setTimeout(() => {
                 const nodes = this.dynamicNodes;
-                this.addPacket(nodes, '#ff6b6b', 2.5);
+                // ホップ数に応じて速度を調整
+                const speed = nodes.length > 5 ? 3.5 : 2.5;
+                const returnDelay = nodes.length > 5 ? nodes.length * 300 : nodes.length * 400;
+
+                this.addPacket(nodes, '#ff6b6b', speed);
 
                 // 応答パケット
                 setTimeout(() => {
                     const returnRoute = [...nodes].reverse();
-                    this.addPacket(returnRoute, '#68d391', 2.5);
-                }, nodes.length * 400);
+                    this.addPacket(returnRoute, '#68d391', speed);
+                }, returnDelay);
             }, 100);
         } else {
             // デフォルトの経路
@@ -289,18 +356,36 @@ class NetworkVisualizer {
 
         const nodes = this.dynamicNodes;
 
+        // ホップ数に応じて速度を自動調整
+        const hopCount = nodes.length - 1;
+        let hopDelay, packetSpeed;
+
+        if (hopCount <= 3) {
+            // 少ないホップ: ゆっくり見せる
+            hopDelay = 1000;
+            packetSpeed = 2;
+        } else if (hopCount <= 5) {
+            // 中程度: バランス
+            hopDelay = 800;
+            packetSpeed = 2.5;
+        } else {
+            // 多いホップ: 速めに
+            hopDelay = 600;
+            packetSpeed = 3;
+        }
+
         // ホップごとにアニメーション
         for (let i = 0; i < nodes.length - 1; i++) {
             setTimeout(() => {
                 const route = nodes.slice(0, i + 2);
-                this.addPacket(route, '#ffd666', 2);
+                this.addPacket(route, '#ffd666', packetSpeed);
 
                 // 応答パケット
                 setTimeout(() => {
                     const returnRoute = [...route].reverse();
-                    this.addPacket(returnRoute, '#68d391', 2);
-                }, 300);
-            }, i * 1000);
+                    this.addPacket(returnRoute, '#68d391', packetSpeed);
+                }, 250);
+            }, i * hopDelay);
         }
     }
 
