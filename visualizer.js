@@ -16,10 +16,21 @@ class NetworkVisualizer {
         // Retinaディスプレイ対応
         const dpr = window.devicePixelRatio || 1;
         const rect = this.canvas.getBoundingClientRect();
-        this.canvas.width = rect.width * dpr;
+
+        // 既にexpandCanvasで拡張されている場合は、その幅を維持
+        const currentStyleWidth = this.canvas.style.width;
+        if (currentStyleWidth && parseFloat(currentStyleWidth) > rect.width) {
+            // 拡張済みの幅を維持
+            this.width = parseFloat(currentStyleWidth);
+        } else {
+            // デフォルトの幅を使用
+            this.canvas.style.width = '';
+            this.width = rect.width;
+        }
+
+        this.canvas.width = this.width * dpr;
         this.canvas.height = rect.height * dpr;
         this.ctx.scale(dpr, dpr);
-        this.width = rect.width;
         this.height = rect.height;
     }
 

@@ -38,12 +38,42 @@ body {
 
 .container {
     display: grid;
-    grid-template-columns: 280px 1fr 260px;
+    grid-template-columns: minmax(240px, 20%) minmax(400px, 1fr) minmax(220px, 18%);
     gap: 12px;
     flex: 1;
     padding: 12px;
     overflow: hidden;
     min-height: 0;
+}
+
+/* レスポンシブデザイン: タブレット */
+@media (max-width: 1200px) {
+    .container {
+        grid-template-columns: minmax(200px, 22%) 1fr minmax(200px, 20%);
+    }
+}
+
+/* レスポンシブデザイン: 小さめの画面 */
+@media (max-width: 900px) {
+    .container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+        gap: 12px;
+    }
+
+    .tutorial-area {
+        max-height: 200px;
+        order: 1;
+    }
+
+    .execution-area {
+        order: 2;
+    }
+
+    .command-area {
+        max-height: 180px;
+        order: 3;
+    }
 }
 
 /* 左エリア: 学習・課題 */
@@ -490,32 +520,15 @@ body {
     background: rgba(0, 113, 188, 0.8);
 }
 
-/* レスポンシブデザイン */
+/* レスポンシブデザイン: 追加の調整 */
 @media (max-width: 1400px) {
     .container {
-        grid-template-columns: 260px 1fr 240px;
         gap: 10px;
         padding: 10px;
     }
 }
 
-@media (max-width: 1200px) {
-    .container {
-        grid-template-columns: 240px 1fr 220px;
-    }
-
-    .header h1 {
-        font-size: 1.3rem;
-    }
-}
-
 @media (max-width: 900px) {
-    .container {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr auto;
-        overflow-y: auto;
-    }
-
     .tutorial-area,
     .commands-area {
         max-height: 300px;
@@ -523,5 +536,52 @@ body {
 
     .header h1 {
         font-size: 1.2rem;
+    }
+
+    .network-diagram {
+        min-height: 300px;
+    }
+
+    .console-wrapper {
+        min-height: 250px;
+    }
+}
+
+/* レスポンシブデザイン: モバイル */
+@media (max-width: 600px) {
+    .header h1 {
+        font-size: 1rem;
+    }
+
+    .header .subtitle {
+        font-size: 0.75rem;
+    }
+
+    .container {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .tutorial-area,
+    .commands-area {
+        max-height: 250px;
+        padding: 10px;
+    }
+
+    .cmd-btn {
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    .network-diagram,
+    .console-wrapper {
+        padding: 10px;
+    }
+
+    .replay-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+        top: 10px;
+        right: 10px;
     }
 }
