@@ -162,6 +162,8 @@ body {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .network-diagram h2 {
@@ -204,7 +206,7 @@ body {
 
 #network-canvas {
     display: block;
-    width: 100%;
+    min-width: 100%;
     flex: 1;
     background: #f0f4f8;
     border-radius: 6px;

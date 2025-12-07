@@ -69,13 +69,35 @@ class NetworkVisualizer {
         const centerY = this.height / 2;
         const verticalOffset = 70; // 上下の振れ幅
 
-        // 横幅を十分に確保（最小120pxの間隔）
-        const totalHops = routeData.length + 1; // PC + 経由地
-        const spacing = Math.max(120, Math.min(180, (this.width - 100) / totalHops));
+        // 描画範囲を考慮した配置計算
+        const leftMargin = 50;
+        const rightMargin = 50;
+        const totalNodes = routeData.length + 1; // PC + 経由地
+
+        // 推奨間隔で必要な幅を計算
+        const idealSpacing = 120;
+        const minSpacing = 90;
+        const requiredWidth = leftMargin + (totalNodes - 1) * idealSpacing + rightMargin;
+
+        // canvasの幅を必要に応じて拡張
+        if (requiredWidth > this.width) {
+            this.expandCanvas(requiredWidth);
+        }
+
+        // 利用可能な幅を再計算
+        const availableWidth = this.width - leftMargin - rightMargin;
+        let spacing = availableWidth / (totalNodes - 1);
+
+        // 間隔の調整
+        if (spacing < minSpacing) {
+            spacing = minSpacing;
+        } else if (spacing > idealSpacing) {
+            spacing = idealSpacing;
+        }
 
         // 開始ノード（PC）
         nodes.push({
-            x: 50,
+            x: leftMargin,
             y: centerY,
             label: '🖥️ PC',
             fullLabel: 'あなたのPC',
@@ -121,7 +143,7 @@ class NetworkVisualizer {
             }
 
             nodes.push({
-                x: 50 + spacing * hopNumber,
+                x: leftMargin + spacing * hopNumber,
                 y: isEven ? centerY + verticalOffset : centerY - verticalOffset,
                 label: `${icon} ${shortLabel}`,
                 fullLabel: hop.name,
@@ -134,6 +156,16 @@ class NetworkVisualizer {
         });
 
         return nodes;
+    }
+
+    // canvasの幅を拡張する
+    expandCanvas(newWidth) {
+        const dpr = window.devicePixelRatio || 1;
+        this.canvas.style.width = `${newWidth}px`;
+        this.canvas.width = newWidth * dpr;
+        this.canvas.height = this.canvas.height; // 高さは維持
+        this.ctx.scale(dpr, dpr);
+        this.width = newWidth;
     }
 
     // 静的なネットワーク図を描画
