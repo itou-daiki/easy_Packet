@@ -89,7 +89,10 @@
             </div>
 
             <div class="console-wrapper">
-                <h2>💻 コンソール</h2>
+                <div class="console-header">
+                    <h2>💻 コンソール</h2>
+                    <button id="abort-btn" class="abort-btn" style="display: none;" title="実行中のコマンドを中断 (Esc)">🛑 中止 (Esc)</button>
+                </div>
                 <div id="console-output"></div>
                 <div class="console-input-wrapper">
                     <span class="prompt">$ </span>

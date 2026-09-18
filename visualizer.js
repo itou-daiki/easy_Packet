@@ -80,6 +80,11 @@ class NetworkVisualizer {
         const replayBtn = document.getElementById('replay-animation');
         if (replayBtn) replayBtn.style.display = 'block';
 
+        if (commandData.failed) {
+            this.animateFailure(commandData);
+            return;
+        }
+
         switch (commandData.type) {
             case 'nslookup':
                 this.animateNslookup();
@@ -93,6 +98,17 @@ class NetworkVisualizer {
             case 'ipconfig':
                 this.animateIpconfig();
                 break;
+        }
+    }
+
+    animateFailure(commandData) {
+        this.clearPackets();
+        const nodes = this.currentRoute && this.currentRoute.length > 0
+            ? this.generateNodes(this.currentRoute)
+            : (this.nodes ? [this.nodes.pc, this.nodes.router1] : null);
+
+        if (nodes && nodes.length >= 2 && nodes[0] && nodes[1]) {
+            this.addPacket([nodes[0], nodes[1]], '#f56565', 1.5);
         }
     }
 

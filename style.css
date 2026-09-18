@@ -265,11 +265,40 @@ body {
     min-height: 0;
 }
 
-.console-wrapper h2 {
-    color: #a9dc76;
+.console-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 10px;
-    font-size: 1.1rem;
     flex-shrink: 0;
+}
+
+.console-header h2 {
+    color: #a9dc76;
+    margin-bottom: 0;
+    font-size: 1.1rem;
+}
+
+.abort-btn {
+    background: #e53e3e;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+.abort-btn:hover {
+    background: #c53030;
+    transform: translateY(-1px);
+}
+
+.abort-btn:active {
+    transform: translateY(0);
 }
 
 #console-output {
@@ -428,6 +457,19 @@ body {
 
 .cmd-btn.clear {
     background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+}
+
+.cmd-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+#console-input[readonly] {
+    cursor: not-allowed;
+    opacity: 0.8;
 }
 
 .cmd-btn.clear:hover {

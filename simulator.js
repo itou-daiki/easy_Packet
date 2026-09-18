@@ -390,73 +390,91 @@ class CommandSimulator {
         const command = parts[0].toLowerCase();
         const args = parts.slice(1);
 
+        let results;
         switch (command) {
             case 'nslookup':
                 if (args.length === 0) {
-                    return [
+                    results = [
                         { type: 'error', text: '❌ ドメイン名が指定されていません' },
                         { type: 'info', text: '💡 使い方: nslookup <ドメイン名>' },
                         { type: 'info', text: '例: nslookup google.com' }
                     ];
+                    break;
                 }
                 // URL形式チェック
                 const nslookupCheck = this.checkAndSuggestDomain(args[0], 'nslookup');
                 if (nslookupCheck.hasError) {
-                    return nslookupCheck.results;
+                    results = nslookupCheck.results;
+                    break;
                 }
-                return await this.nslookup(args[0]);
+                results = await this.nslookup(args[0]);
+                break;
 
             case 'ping':
                 if (args.length === 0) {
-                    return [
+                    results = [
                         { type: 'error', text: '❌ ドメイン名が指定されていません' },
                         { type: 'info', text: '💡 使い方: ping <ドメイン名>' },
                         { type: 'info', text: '例: ping google.com' }
                     ];
+                    break;
                 }
                 // URL形式チェック
                 const pingCheck = this.checkAndSuggestDomain(args[0], 'ping');
                 if (pingCheck.hasError) {
-                    return pingCheck.results;
+                    results = pingCheck.results;
+                    break;
                 }
-                return await this.ping(args[0]);
+                results = await this.ping(args[0]);
+                break;
 
             case 'traceroute':
             case 'tracert':
                 if (args.length === 0) {
-                    return [
+                    results = [
                         { type: 'error', text: '❌ ドメイン名が指定されていません' },
                         { type: 'info', text: '💡 使い方: traceroute <ドメイン名>' },
                         { type: 'info', text: '例: traceroute google.com' }
                     ];
+                    break;
                 }
                 // URL形式チェック
                 const tracerouteCheck = this.checkAndSuggestDomain(args[0], 'traceroute');
                 if (tracerouteCheck.hasError) {
-                    return tracerouteCheck.results;
+                    results = tracerouteCheck.results;
+                    break;
                 }
-                return await this.traceroute(args[0]);
+                results = await this.traceroute(args[0]);
+                break;
 
             case 'ipconfig':
             case 'ifconfig':
             case 'whoami':
-                return await this.ipconfig();
+                results = await this.ipconfig();
+                break;
 
             case 'clear':
             case 'cls':
-                return await this.clear();
+                results = await this.clear();
+                break;
 
             case 'help':
             case '?':
-                return await this.help();
+                results = await this.help();
+                break;
 
             default:
-                return [
+                results = [
                     { type: 'error', text: `❌ '${command}' は認識されていません` },
                     { type: 'info', text: '💡 利用可能なコマンド: nslookup, ping, traceroute, ipconfig, clear, help' },
                     { type: 'info', text: '詳しくは「help」と入力してください' }
                 ];
+                break;
         }
+
+        const hasError = Array.isArray(results) && results.some(r => r.type === 'error');
+        results.ok = !hasError;
+        return results;
     }
 
     sleep(ms) {

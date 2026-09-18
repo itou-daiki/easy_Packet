@@ -5,10 +5,15 @@ class EasyPacketApp {
         this.visualizer = new NetworkVisualizer('network-canvas');
         this.consoleOutput = document.getElementById('console-output');
         this.consoleInput = document.getElementById('console-input');
-        this.setupEventListeners();
+        this.abortBtn = document.getElementById('abort-btn');
+        this.defaultPlaceholder = this.consoleInput ? this.consoleInput.placeholder : '';
         this.commandHistory = [];
         this.historyIndex = -1;
         this.isExecuting = false;
+        this.isAborted = false;
+        this.currentSleepTimer = null;
+        this.currentSleepResolver = null;
+        this.setupEventListeners();
 
         // ウェルカムメッセージ
         this.printWelcome();
@@ -31,19 +36,30 @@ class EasyPacketApp {
             }
         });
 
+        // 実行中断用キーハンドラ（documentに登録してフォーカス問わずEscで中断）
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isExecuting) {
+                e.preventDefault();
+                this.abortExecution();
+            }
+        });
+
+        // 中止ボタン
+        if (this.abortBtn) {
+            this.abortBtn.addEventListener('click', () => {
+                if (this.isExecuting) {
+                    this.abortExecution();
+                }
+            });
+        }
+
         // クイックコマンドボタン
         document.querySelectorAll('.cmd-btn').forEach(button => {
             button.addEventListener('click', () => {
+                if (this.isExecuting) return;
                 const cmd = button.getAttribute('data-cmd');
-                if (cmd === 'clear') {
-                    this.clearConsole();
-                } else {
-                    this.consoleInput.value = cmd;
-                    this.consoleInput.focus();
-                    if (!this.isExecuting) {
-                        this.executeCommand();
-                    }
-                }
+                this.consoleInput.value = cmd;
+                this.executeCommand();
             });
         });
 
@@ -65,6 +81,47 @@ class EasyPacketApp {
             observer.observe(canvasWrapper);
         }
         window.addEventListener('resize', debouncedResize);
+    }
+
+    setControlsLocked(locked) {
+        if (this.consoleInput) {
+            this.consoleInput.readOnly = locked;
+            if (locked) {
+                this.consoleInput.setAttribute('aria-busy', 'true');
+                this.consoleInput.placeholder = '⏳ 実行中... (Escで中止)';
+            } else {
+                this.consoleInput.removeAttribute('aria-busy');
+                this.consoleInput.placeholder = this.defaultPlaceholder;
+            }
+        }
+
+        if (this.abortBtn) {
+            this.abortBtn.style.display = locked ? 'inline-block' : 'none';
+        }
+
+        document.querySelectorAll('.cmd-btn').forEach(button => {
+            button.disabled = locked;
+        });
+    }
+
+    abortExecution() {
+        if (!this.isExecuting || this.isAborted) return;
+        this.isAborted = true;
+        this.printLine({ type: 'warning', text: '🛑 コマンドの実行を中止しました。' });
+        this.scrollToBottom();
+
+        // 進行中のsleepを即時解除
+        if (this.currentSleepTimer) {
+            clearTimeout(this.currentSleepTimer);
+            this.currentSleepTimer = null;
+        }
+        if (this.currentSleepResolver) {
+            this.currentSleepResolver();
+            this.currentSleepResolver = null;
+        }
+
+        // パケットアニメーション停止
+        this.visualizer.clearPackets();
     }
 
     printWelcome() {
@@ -91,73 +148,85 @@ class EasyPacketApp {
         if (!commandLine) return;
 
         this.isExecuting = true;
+        this.isAborted = false;
+        this.setControlsLocked(true);
+
         this.consoleInput.value = '';
         this.commandHistory.push(commandLine);
         this.historyIndex = this.commandHistory.length;
 
-        // コマンドを実行
-        const results = await this.simulator.execute(commandLine);
-        
-        // コマンドの種類とドメインを取得
-        const parts = commandLine.split(/\s+/);
-        const cmd = parts[0].toLowerCase();
-        const domain = parts[1];
+        try {
+            // コマンドを実行
+            const results = await this.simulator.execute(commandLine);
+            
+            // コマンドの種類とドメインを取得
+            const parts = commandLine.split(/\s+/);
+            const cmd = parts[0].toLowerCase();
+            const domain = parts[1];
 
-        // 経路データを収集
-        let routeData = null;
-        const hopDataList = [];
+            // 経路データを収集
+            let routeData = null;
+            const hopDataList = [];
 
-        // 結果を1行ずつ表示
-        for (const result of results) {
-            if (result.type === 'clear') {
-                this.clearConsole();
-            } else {
-                this.printLine(result);
-                this.scrollToBottom();
+            // 結果を1行ずつ表示
+            for (const result of results) {
+                if (this.isAborted) break;
 
-                // アニメーション制御（最初のコマンド行でのみトリガー）
-                if (result.type === 'command') {
-                    // ここではまだアニメーションを開始しない
+                if (result.type === 'clear') {
+                    this.clearConsole();
+                } else {
+                    this.printLine(result);
+                    this.scrollToBottom();
+
+                    // tracerouteのホップデータを収集
+                    if (result.hopData) {
+                        hopDataList.push(result.hopData);
+                        await this.sleep(50);
+                    }
+
+                    // 1行ずつ表示する遅延（コマンド行以外）
+                    if (result.type !== 'command') {
+                        await this.sleep(200);
+                    }
                 }
+            }
 
-                // tracerouteのホップデータを収集
-                if (result.hopData) {
-                    hopDataList.push(result.hopData);
-                    await this.sleep(50);
-                }
+            // 中断されておらず、かつエラーがない場合のみアニメーション実行
+            const hasError = Array.isArray(results) && (results.ok === false || results.some(r => r.type === 'error'));
+            const isSuccess = !this.isAborted && !hasError;
 
-                // 1行ずつ表示する遅延（コマンド行以外）
-                if (result.type !== 'command') {
-                    await this.sleep(200);
+            if (isSuccess) {
+                // すべての出力が終わった後にアニメーションを開始
+                if (cmd === 'traceroute' || cmd === 'tracert') {
+                    if (hopDataList.length > 0) {
+                        routeData = hopDataList;
+                    }
+                    this.visualizer.executeAnimation({ type: 'traceroute', route: routeData });
+                } else if (cmd === 'ping') {
+                    if (this.simulator.routesData && this.simulator.routesData[domain]) {
+                        routeData = this.simulator.routesData[domain];
+                    }
+                    this.visualizer.executeAnimation({ type: 'ping', route: routeData });
+                } else if (cmd === 'nslookup') {
+                    this.visualizer.executeAnimation({ type: 'nslookup' });
+                } else if (cmd === 'ipconfig' || cmd === 'ifconfig' || cmd === 'whoami') {
+                    this.visualizer.executeAnimation({ type: 'ipconfig' });
                 }
+            } else if (!this.isAborted && hasError) {
+                // 失敗時は失敗アニメーション
+                this.visualizer.executeAnimation({ type: cmd, failed: true });
+            }
+        } catch (error) {
+            console.error('コマンド実行中にエラーが発生しました:', error);
+            this.printLine({ type: 'error', text: `予期せぬエラーが発生しました: ${error.message || error}` });
+        } finally {
+            this.isExecuting = false;
+            this.setControlsLocked(false);
+            this.scrollToBottom();
+            if (this.consoleInput) {
+                this.consoleInput.focus();
             }
         }
-
-        // すべての出力が終わった後にアニメーションを開始
-        if (cmd === 'traceroute' || cmd === 'tracert') {
-            if (hopDataList.length > 0) {
-                routeData = hopDataList;
-            }
-            this.visualizer.executeAnimation({ type: 'traceroute', route: routeData });
-        } else if (cmd === 'ping') {
-            // pingの場合もtracerouteデータがあれば使用
-            if (this.simulator.routesData[domain]) {
-                routeData = this.simulator.routesData[domain];
-            }
-            this.visualizer.executeAnimation({ type: 'ping', route: routeData });
-        } else if (cmd === 'nslookup') {
-            this.visualizer.executeAnimation({ type: 'nslookup' });
-        } else if (cmd === 'ipconfig' || cmd === 'ifconfig' || cmd === 'whoami') {
-            this.visualizer.executeAnimation({ type: 'ipconfig' });
-        }
-
-        this.scrollToBottom();
-        this.isExecuting = false;
-    }
-
-    triggerAnimation(command, fullCommand) {
-        // この関数は現在使用されていません
-        // executeCommand内で直接visualizer.executeAnimationを呼び出しています
     }
 
     printLine(result) {
@@ -166,7 +235,7 @@ class EasyPacketApp {
         line.textContent = result.text;
 
         // TTLなどの専門用語にツールチップを追加
-        if (result.text.includes('ttl=')) {
+        if (result.text && result.text.includes('ttl=')) {
             line.innerHTML = result.text.replace(
                 /ttl=(\d+)/g,
                 '<span class="tooltip" title="Time To Live: パケットが通過できるルーターの最大数">ttl=$1</span>'
@@ -174,6 +243,11 @@ class EasyPacketApp {
         }
 
         this.consoleOutput.appendChild(line);
+
+        // コンソール出力行数の上限チェック（500行上限）
+        while (this.consoleOutput.children.length > 500) {
+            this.consoleOutput.removeChild(this.consoleOutput.firstChild);
+        }
     }
 
     scrollToBottom() {
@@ -181,7 +255,7 @@ class EasyPacketApp {
     }
 
     clearConsole() {
-        this.consoleOutput.innerHTML = '';
+        this.consoleOutput.textContent = '';
         this.visualizer.clearPackets();
     }
 
@@ -202,7 +276,15 @@ class EasyPacketApp {
     }
 
     sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        if (this.isAborted) return Promise.resolve();
+        return new Promise(resolve => {
+            this.currentSleepResolver = resolve;
+            this.currentSleepTimer = setTimeout(() => {
+                this.currentSleepTimer = null;
+                this.currentSleepResolver = null;
+                resolve();
+            }, ms);
+        });
     }
 }
 
