@@ -1,5 +1,6 @@
 // メインアプリケーション
 class EasyPacketApp {
+
     constructor() {
         this.simulator = new CommandSimulator();
         this.visualizer = new NetworkVisualizer('network-canvas');
@@ -203,16 +204,18 @@ class EasyPacketApp {
                 if (result.hopData) {
                     hopDataList.push(result.hopData);
                     if (!this.isAborted && !hasError && this.visualizer && typeof this.visualizer.animateTracerouteHop === 'function') {
-                        // パケットが hop N に到達するアニメーション (所要時間 350ms)
+                        // パケットが hop N に到達するアニメーション
                         // 到達直後にホップ行をコンソールに出力することで、パケット到達と行出力の時刻差を実質 0ms に同期
-                        await this.visualizer.animateTracerouteHop(result.hopIndex, routeData || hopDataList, 350);
+                        // 1区間あたり約200msで進むようにし、遠いホップほど時間がかかる形にする。
+                        // 授業で目で追える速さを優先（上限1100ms）。
+                        await this.visualizer.animateTracerouteHop(result.hopIndex, routeData || hopDataList);
                     }
                 }
 
                 // 3. ping のステップ行 (pingStep) のアニメーション同期
                 if (result.pingStep) {
                     if (!this.isAborted && !hasError && this.visualizer && typeof this.visualizer.animatePingStep === 'function') {
-                        await this.visualizer.animatePingStep(routeData, 350);
+                        await this.visualizer.animatePingStep(routeData);
                     }
                 }
 

@@ -1,5 +1,13 @@
 // ネットワーク可視化
 class NetworkVisualizer {
+    // パケットが1区間（ノード間の線1本）を進むのにかける時間(ms)。
+    // 授業で目で追えることを優先している。速すぎる／遅すぎると感じたらここを調整する。
+    static MS_PER_SEGMENT = 280;
+    // 経路が長いときに1回の移動が延びすぎないための上限(ms)。
+    static MAX_ANIM_MS = 1800;
+    // ping は 4 回繰り返すため、traceroute より少し速めにして全体が間延びしないようにする。
+    static MS_PER_SEGMENT_PING = 180;
+
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
@@ -505,23 +513,27 @@ class NetworkVisualizer {
     }
 
     // traceroute の特定ホップへの往復アニメーション（往路完了時にresolve）
-    async animateTracerouteHop(hopIndex, routeData, durationMs = 500) {
+    async animateTracerouteHop(hopIndex, routeData, msPerSegment = NetworkVisualizer.MS_PER_SEGMENT) {
         const nodes = this.setupRoute(routeData);
         if (!nodes || nodes.length < 2) return;
 
         const targetNodeIndex = Math.min(hopIndex + 1, nodes.length - 1);
         const forwardRoute = nodes.slice(0, targetNodeIndex + 1);
 
-        // 往路パケット（PC -> hop N）: durationMs かけて到達
+        // 区間ごとの速さを一定にする。区間数から所要時間を出すので、
+        // 遠いホップほど時間がかかり、1区間を進む速さは変わらない。
+        const segments = Math.max(1, forwardRoute.length - 1);
+        const durationMs = Math.min(NetworkVisualizer.MAX_ANIM_MS, segments * msPerSegment);
+
         await this.animatePacketAlongRoute(forwardRoute, '#ffd666', durationMs);
 
         // 復路パケット（hop N -> PC）: 非同期に飛ばす
         const returnRoute = [...forwardRoute].reverse();
-        this.animatePacketAlongRoute(returnRoute, '#68d391', Math.min(300, durationMs * 0.6));
+        this.animatePacketAlongRoute(returnRoute, '#68d391', Math.max(200, durationMs * 0.6));
     }
 
     // ping の往復アニメーション
-    async animatePingStep(routeData, durationMs = 500) {
+    async animatePingStep(routeData, msPerSegment = NetworkVisualizer.MS_PER_SEGMENT_PING) {
         let nodes = this.setupRoute(routeData);
         if (!nodes || nodes.length < 2) {
             if (this.nodes) {
@@ -531,7 +543,9 @@ class NetworkVisualizer {
             }
         }
 
-        const halfDuration = Math.max(100, Math.floor(durationMs / 2));
+        // 往路・復路それぞれを区間数に応じた時間で進める
+        const segments = Math.max(1, nodes.length - 1);
+        const halfDuration = Math.min(NetworkVisualizer.MAX_ANIM_MS, segments * msPerSegment);
         // 往路: PC -> サーバ
         await this.animatePacketAlongRoute(nodes, '#ff6b6b', halfDuration);
         // 復路: サーバ -> PC
