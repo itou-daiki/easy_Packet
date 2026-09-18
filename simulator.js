@@ -1,9 +1,11 @@
-// コマンドシミュレーター
+// コマンドシミュレーター (Phase 4: ストリーミング化対応)
 class CommandSimulator {
     constructor() {
         // オフライン用埋め込みデータで初期化 (data.js から同期的に取得)
         this.dnsData = typeof DEFAULT_DNS_DATA !== 'undefined' ? Object.assign({}, DEFAULT_DNS_DATA) : {};
         this.routesData = typeof DEFAULT_ROUTES_DATA !== 'undefined' ? Object.assign({}, DEFAULT_ROUTES_DATA) : {};
+        this.isAborted = false;
+        this.currentSleepResolve = null;
         this.loadData();
     }
 
@@ -20,95 +22,168 @@ class CommandSimulator {
         }
     }
 
-    // nslookup コマンド
-    async nslookup(domain) {
-        const results = [];
-        results.push({ type: 'command', text: `$ nslookup ${domain}` });
+    abort() {
+        this.isAborted = true;
+        if (typeof this.currentSleepResolve === 'function') {
+            this.currentSleepResolve();
+            this.currentSleepResolve = null;
+        }
+    }
 
-        await this.sleep(300);
+    resetAbort() {
+        this.isAborted = false;
+        this.currentSleepResolve = null;
+    }
+
+    sleep(ms) {
+        if (this.isAborted) return Promise.resolve();
+        return new Promise(resolve => {
+            const timer = setTimeout(() => {
+                this.currentSleepResolve = null;
+                resolve();
+            }, ms);
+            this.currentSleepResolve = () => {
+                clearTimeout(timer);
+                resolve();
+            };
+        });
+    }
+
+    // nslookup コマンド (AsyncGenerator)
+    async *nslookup(domain) {
+        if (!domain) {
+            yield { type: 'error', text: '❌ ドメイン名が指定されていません', failed: true };
+            yield { type: 'info', text: '💡 使い方: nslookup <ドメイン名>' };
+            yield { type: 'info', text: '例: nslookup google.com' };
+            return;
+        }
+
+        // URL形式チェック
+        const check = this.checkAndSuggestDomain(domain, 'nslookup');
+        if (check.hasError) {
+            for (const item of check.results) {
+                yield Object.assign({}, item, { failed: true });
+            }
+            return;
+        }
+
+        yield { type: 'command', text: `$ nslookup ${domain}` };
+        yield { type: 'info', text: 'サーバー:  dns.google' };
+        yield { type: 'info', text: 'Address:  8.8.8.8' };
+        yield { type: 'success', text: '' };
+
+        await this.sleep(200);
+        if (this.isAborted) return;
 
         // オフラインDNSデータから検索
         const ip = this.dnsData[domain];
 
         if (!ip || ip === 'TIMEOUT') {
-            results.push({ type: 'error', text: `*** ${domain} が見つかりません: Non-existent domain` });
-            return results;
+            yield { type: 'error', text: `*** ${domain} が見つかりません: Non-existent domain`, failed: true };
+            return;
         }
 
-        results.push({ type: 'info', text: 'サーバー:  dns.google' });
-        results.push({ type: 'info', text: 'Address:  8.8.8.8' });
-        results.push({ type: 'success', text: '' });
-        results.push({ type: 'success', text: `名前:    ${domain}` });
-        results.push({ type: 'success', text: `Address: ${ip}` });
-
-        return results;
+        yield { type: 'success', text: `名前:    ${domain}` };
+        yield { type: 'success', text: `Address: ${ip}` };
     }
 
-    // ping コマンド
-    async ping(domain) {
-        const results = [];
-        results.push({ type: 'command', text: `$ ping ${domain}` });
+    // ping コマンド (AsyncGenerator)
+    async *ping(domain) {
+        if (!domain) {
+            yield { type: 'error', text: '❌ ドメイン名が指定されていません', failed: true };
+            yield { type: 'info', text: '💡 使い方: ping <ドメイン名>' };
+            yield { type: 'info', text: '例: ping google.com' };
+            return;
+        }
 
-        await this.sleep(200);
+        // URL形式チェック
+        const check = this.checkAndSuggestDomain(domain, 'ping');
+        if (check.hasError) {
+            for (const item of check.results) {
+                yield Object.assign({}, item, { failed: true });
+            }
+            return;
+        }
+
+        yield { type: 'command', text: `$ ping ${domain}` };
 
         // IP直接指定か、DNSから検索
         const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(domain);
         let ip = isIpAddress ? domain : this.dnsData[domain];
 
         if (!ip) {
-            results.push({ type: 'error', text: `ping: ${domain}: DNS解決に失敗しました` });
-            return results;
+            yield { type: 'error', text: `ping: ${domain}: DNS解決に失敗しました`, failed: true };
+            return;
         }
 
         if (ip === 'TIMEOUT') {
-            results.push({ type: 'info', text: `PING ${domain} (192.0.2.99): 56 data bytes` });
+            yield { type: 'info', text: `PING ${domain} (192.0.2.99): 56 data bytes` };
             for (let i = 0; i < 4; i++) {
-                await this.sleep(300);
-                results.push({ type: 'error', text: `Request timeout for icmp_seq ${i}` });
+                await this.sleep(400);
+                if (this.isAborted) return;
+                yield { type: 'error', text: `Request timeout for icmp_seq ${i}` };
             }
-            results.push({ type: 'info', text: '' });
-            results.push({ type: 'info', text: `--- ${domain} ping statistics ---` });
-            results.push({ type: 'error', text: '4 packets transmitted, 0 packets received, 100.0% packet loss' });
-            return results;
+            yield { type: 'info', text: '' };
+            yield { type: 'info', text: `--- ${domain} ping statistics ---` };
+            yield { type: 'error', text: '4 packets transmitted, 0 packets received, 100.0% packet loss', failed: true };
+            return;
         }
 
-        results.push({ type: 'info', text: `PING ${domain} (${ip}): 56 data bytes` });
+        // 正常な ping (最初のヘッダー行は即時 yield)
+        yield {
+            type: 'info',
+            text: `PING ${domain} (${ip}): 56 data bytes`,
+            pingHeader: { domain, ip }
+        };
 
-        // 4回のpingを送信
+        const baseTime = domain === 'example-school.ac.jp' ? 5 : 15;
+        // 4回のpingを送信 (1発目の応答行は 400ms 以内に出力)
         for (let i = 0; i < 4; i++) {
-            await this.sleep(300);
-            const time = (Math.random() * 20 + 10).toFixed(1);
+            await this.sleep(i === 0 ? 400 : 700);
+            if (this.isAborted) return;
+
+            const time = (baseTime + Math.random() * 8).toFixed(1);
             const ttl = Math.floor(Math.random() * 8 + 56);
-            results.push({
+            yield {
                 type: 'success',
-                text: `64 bytes from ${ip}: icmp_seq=${i} ttl=${ttl} time=${time} ms`
-            });
+                text: `64 bytes from ${ip}: icmp_seq=${i} ttl=${ttl} time=${time} ms`,
+                pingStep: { seq: i, ip, ttl, time }
+            };
         }
 
-        results.push({ type: 'success', text: '' });
-        results.push({ type: 'success', text: `--- ${domain} ping statistics ---` });
-        results.push({ type: 'success', text: '4 packets transmitted, 4 packets received, 0% packet loss' });
-
-        return results;
+        yield { type: 'success', text: '' };
+        yield { type: 'success', text: `--- ${domain} ping statistics ---` };
+        yield { type: 'success', text: '4 packets transmitted, 4 packets received, 0% packet loss' };
     }
 
-    // traceroute コマンド
-    async traceroute(domain) {
-        const results = [];
-        results.push({ type: 'command', text: `$ traceroute ${domain}` });
+    // traceroute コマンド (AsyncGenerator)
+    async *traceroute(domain) {
+        if (!domain) {
+            yield { type: 'error', text: '❌ ドメイン名が指定されていません', failed: true };
+            yield { type: 'info', text: '💡 使い方: traceroute <ドメイン名>' };
+            yield { type: 'info', text: '例: traceroute google.com' };
+            return;
+        }
 
-        await this.sleep(300);
+        // URL形式チェック
+        const check = this.checkAndSuggestDomain(domain, 'traceroute');
+        if (check.hasError) {
+            for (const item of check.results) {
+                yield Object.assign({}, item, { failed: true });
+            }
+            return;
+        }
+
+        yield { type: 'command', text: `$ traceroute ${domain}` };
 
         // IP直接指定か、DNSから検索
         const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(domain);
         let ip = isIpAddress ? domain : this.dnsData[domain];
 
         if (!ip || ip === 'TIMEOUT') {
-            results.push({ type: 'error', text: `traceroute: ${domain}: Name or service not known` });
-            return results;
+            yield { type: 'error', text: `traceroute: ${domain}: Name or service not known`, failed: true };
+            return;
         }
-
-        results.push({ type: 'info', text: `traceroute to ${domain} (${ip}), 30 hops max, 60 byte packets` });
 
         // 経路データ (routesData) を取得、未登録ドメインはRFC 5737準拠のデフォルト経路
         let routes = this.routesData[domain];
@@ -122,79 +197,82 @@ class CommandSimulator {
             ];
         }
 
+        // 最初のヘッダー行は即時 yield (0ms)
+        yield {
+            type: 'info',
+            text: `traceroute to ${domain} (${ip}), 30 hops max, 60 byte packets`,
+            tracerouteHeader: { domain, ip, routes }
+        };
+
         for (let i = 0; i < routes.length; i++) {
-            await this.sleep(300);
+            // ホップ行出力前の通信遅延 (パケット飛行時間 400ms と同期)
+            await this.sleep(400);
+            if (this.isAborted) return;
+
             const hop = routes[i];
             const baseTime = hop.time || (i + 1) * 6;
             const time1 = (baseTime + Math.random() * 1.5).toFixed(3);
             const time2 = (baseTime + Math.random() * 1.5).toFixed(3);
             const time3 = (baseTime + Math.random() * 1.5).toFixed(3);
 
-            results.push({
+            yield {
                 type: 'success',
                 text: `${i + 1}  ${hop.name} (${hop.ip})  ${time1} ms  ${time2} ms  ${time3} ms`,
-                hopData: { ip: hop.ip, name: hop.name, time: baseTime }
-            });
+                hopData: { ip: hop.ip, name: hop.name, time: baseTime },
+                hopIndex: i,
+                totalHops: routes.length
+            };
         }
-
-        return results;
     }
 
-    // ipconfig コマンド (F-2, F-9 解消: 外部通信ゼロ・安全な教育用構成)
-    async ipconfig() {
-        const results = [];
-        results.push({ type: 'command', text: `$ ipconfig` });
+    // ipconfig コマンド (AsyncGenerator)
+    async *ipconfig() {
+        yield { type: 'command', text: `$ ipconfig` };
 
-        await this.sleep(300);
+        await this.sleep(100);
+        if (this.isAborted) return;
 
-        results.push({ type: 'info', text: 'Windows IP Configuration' });
-        results.push({ type: 'info', text: '(※学習用の架空のネットワーク構成です)' });
-        results.push({ type: 'success', text: '' });
-        results.push({ type: 'success', text: 'Ethernet adapter ローカル エリア接続:' });
-        results.push({ type: 'success', text: '   IPv4 アドレス . . . . . . . . . . . : 192.168.1.100' });
-        results.push({ type: 'success', text: '   サブネット マスク . . . . . . . . . : 255.255.255.0' });
-        results.push({ type: 'success', text: '   デフォルト ゲートウェイ . . . . . . : 192.168.1.1' });
-        results.push({ type: 'success', text: '   DNS サーバー. . . . . . . . . . . . : 192.168.1.1' });
-        results.push({ type: 'success', text: '                                         8.8.8.8' });
-
-        return results;
+        yield { type: 'info', text: 'Windows IP Configuration' };
+        yield { type: 'info', text: '(※学習用の架空のネットワーク構成です)' };
+        yield { type: 'success', text: '' };
+        yield { type: 'success', text: 'Ethernet adapter ローカル エリア接続:' };
+        yield { type: 'success', text: '   IPv4 アドレス . . . . . . . . . . . : 192.168.1.100' };
+        yield { type: 'success', text: '   サブネット マスク . . . . . . . . . : 255.255.255.0' };
+        yield { type: 'success', text: '   デフォルト ゲートウェイ . . . . . . : 192.168.1.1' };
+        yield { type: 'success', text: '   DNS サーバー. . . . . . . . . . . . : 192.168.1.1' };
+        yield { type: 'success', text: '                                         8.8.8.8' };
     }
 
-    // clear コマンド
-    async clear() {
-        return [{ type: 'clear', text: '' }];
+    // clear コマンド (AsyncGenerator)
+    async *clear() {
+        yield { type: 'clear', text: '' };
     }
 
-    // help コマンド
-    async help() {
-        const results = [];
-        results.push({ type: 'command', text: '$ help' });
-        results.push({ type: 'info', text: '利用可能なコマンド:' });
-        results.push({ type: 'success', text: '  nslookup <domain>  - ドメイン名からIPアドレスを調べる' });
-        results.push({ type: 'success', text: '  ping <domain>      - サーバーへの接続を確認する' });
-        results.push({ type: 'success', text: '  traceroute <domain> - パケットの経路を追跡する' });
-        results.push({ type: 'success', text: '  ipconfig           - 自分のIPアドレスを表示する' });
-        results.push({ type: 'success', text: '  clear              - コンソールをクリアする' });
-        results.push({ type: 'success', text: '  help               - このヘルプを表示する' });
-        return results;
+    // help コマンド (AsyncGenerator)
+    async *help() {
+        yield { type: 'command', text: '$ help' };
+        yield { type: 'info', text: '利用可能なコマンド:' };
+        yield { type: 'success', text: '  nslookup <domain>  - ドメイン名からIPアドレスを調べる' };
+        yield { type: 'success', text: '  ping <domain>      - サーバーへの接続を確認する' };
+        yield { type: 'success', text: '  traceroute <domain> - パケットの経路を追跡する' };
+        yield { type: 'success', text: '  ipconfig           - 自分のIPアドレスを表示する' };
+        yield { type: 'success', text: '  clear              - コンソールをクリアする' };
+        yield { type: 'success', text: '  help               - このヘルプを表示する' };
     }
 
     // コマンド実行
     // URLからドメイン名を抽出
     extractDomain(input) {
-        // https://, http://, /などを削除
         let domain = input
             .replace(/^https?:\/\//, '')  // プロトコルを削除
             .replace(/^www\./, '')         // wwwを削除
             .replace(/\/.*$/, '')          // パス以降を削除
             .replace(/:\d+$/, '')          // ポート番号を削除
             .trim();
-        
         return domain;
     }
 
     // 入力を正規化して修正案を提示
-    // URL形式をチェックして修正案を提示
     checkAndSuggestDomain(input, command) {
         const original = input;
         const domain = this.extractDomain(input);
@@ -217,99 +295,75 @@ class CommandSimulator {
         return { hasError: false, results: [] };
     }
 
-    async execute(commandLine) {
-        const parts = commandLine.trim().split(/\s+/);
-        const command = parts[0].toLowerCase();
-        const args = parts.slice(1);
+    // メイン実行 (AsyncGenerator: 1行できるたびに即時 yield、かつ await 時に配列としても解決可能)
+    execute(commandLine) {
+        const gen = this._executeGenerator(commandLine);
+        gen.then = (onResolve, onReject) => {
+            return (async () => {
+                const results = [];
+                for await (const item of this._executeGenerator(commandLine)) {
+                    results.push(item);
+                }
+                const hasError = results.some(r => r.type === 'error' || r.failed);
+                results.ok = !hasError;
+                return results;
+            })().then(onResolve, onReject);
+        };
+        return gen;
+    }
 
-        let results;
+    async *_executeGenerator(commandLine) {
+        this.resetAbort();
+        const parts = commandLine.trim().split(/\s+/);
+        const command = parts[0] ? parts[0].toLowerCase() : '';
+        const arg = parts.slice(1).join(' ');
+
         switch (command) {
             case 'nslookup':
-                if (args.length === 0) {
-                    results = [
-                        { type: 'error', text: '❌ ドメイン名が指定されていません' },
-                        { type: 'info', text: '💡 使い方: nslookup <ドメイン名>' },
-                        { type: 'info', text: '例: nslookup google.com' }
-                    ];
-                    break;
-                }
-                // URL形式チェック
-                const nslookupCheck = this.checkAndSuggestDomain(args[0], 'nslookup');
-                if (nslookupCheck.hasError) {
-                    results = nslookupCheck.results;
-                    break;
-                }
-                results = await this.nslookup(args[0]);
+                yield* this.nslookup(arg);
                 break;
 
             case 'ping':
-                if (args.length === 0) {
-                    results = [
-                        { type: 'error', text: '❌ ドメイン名が指定されていません' },
-                        { type: 'info', text: '💡 使い方: ping <ドメイン名>' },
-                        { type: 'info', text: '例: ping google.com' }
-                    ];
-                    break;
-                }
-                // URL形式チェック
-                const pingCheck = this.checkAndSuggestDomain(args[0], 'ping');
-                if (pingCheck.hasError) {
-                    results = pingCheck.results;
-                    break;
-                }
-                results = await this.ping(args[0]);
+                yield* this.ping(arg);
                 break;
 
             case 'traceroute':
             case 'tracert':
-                if (args.length === 0) {
-                    results = [
-                        { type: 'error', text: '❌ ドメイン名が指定されていません' },
-                        { type: 'info', text: '💡 使い方: traceroute <ドメイン名>' },
-                        { type: 'info', text: '例: traceroute google.com' }
-                    ];
-                    break;
-                }
-                // URL形式チェック
-                const tracerouteCheck = this.checkAndSuggestDomain(args[0], 'traceroute');
-                if (tracerouteCheck.hasError) {
-                    results = tracerouteCheck.results;
-                    break;
-                }
-                results = await this.traceroute(args[0]);
+                yield* this.traceroute(arg);
                 break;
 
             case 'ipconfig':
             case 'ifconfig':
             case 'whoami':
-                results = await this.ipconfig();
+                yield* this.ipconfig();
                 break;
 
             case 'clear':
             case 'cls':
-                results = await this.clear();
+                yield* this.clear();
                 break;
 
             case 'help':
             case '?':
-                results = await this.help();
+                yield* this.help();
                 break;
 
             default:
-                results = [
-                    { type: 'error', text: `❌ '${command}' は認識されていません` },
-                    { type: 'info', text: '💡 利用可能なコマンド: nslookup, ping, traceroute, ipconfig, clear, help' },
-                    { type: 'info', text: '詳しくは「help」と入力してください' }
-                ];
+                yield { type: 'error', text: `❌ '${command}' は認識されていません`, failed: true };
+                yield { type: 'info', text: '💡 利用可能なコマンド: nslookup, ping, traceroute, ipconfig, clear, help' };
+                yield { type: 'info', text: '詳しくは「help」と入力してください' };
                 break;
         }
-
-        const hasError = Array.isArray(results) && results.some(r => r.type === 'error');
-        results.ok = !hasError;
-        return results;
     }
 
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    // 後方互換・一括取得ヘルパー (テスト等用)
+    async executeAll(commandLine) {
+        const results = [];
+        for await (const line of this._executeGenerator(commandLine)) {
+            results.push(line);
+        }
+        const hasError = results.some(r => r.type === 'error' || r.failed);
+        results.ok = !hasError;
+        return results;
     }
 }

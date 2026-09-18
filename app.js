@@ -111,6 +111,9 @@ class EasyPacketApp {
         this.scrollToBottom();
 
         // 進行中のsleepを即時解除
+        if (this.simulator && typeof this.simulator.abort === 'function') {
+            this.simulator.abort();
+        }
         if (this.currentSleepTimer) {
             clearTimeout(this.currentSleepTimer);
             this.currentSleepTimer = null;
@@ -149,72 +152,104 @@ class EasyPacketApp {
 
         this.isExecuting = true;
         this.isAborted = false;
+        if (this.simulator && typeof this.simulator.resetAbort === 'function') {
+            this.simulator.resetAbort();
+        }
         this.setControlsLocked(true);
 
         this.consoleInput.value = '';
         this.commandHistory.push(commandLine);
         this.historyIndex = this.commandHistory.length;
 
+        // コマンドの種類とドメインを取得
+        const parts = commandLine.split(/\s+/);
+        const cmd = parts[0].toLowerCase();
+        const domain = parts[1] || '';
+
+        let hasError = false;
+        let routeData = null;
+        let hopDataList = [];
+
         try {
-            // コマンドを実行
-            const results = await this.simulator.execute(commandLine);
-            
-            // コマンドの種類とドメインを取得
-            const parts = commandLine.split(/\s+/);
-            const cmd = parts[0].toLowerCase();
-            const domain = parts[1];
+            // traceroute や ping の場合、既定経路データがあれば取得
+            if (this.simulator.routesData && this.simulator.routesData[domain]) {
+                routeData = this.simulator.routesData[domain];
+            }
 
-            // 経路データを収集
-            let routeData = null;
-            const hopDataList = [];
-
-            // 結果を1行ずつ表示
-            for (const result of results) {
+            // ストリーミング実行: 1行受け取るたびに即時描画・アニメーション同期
+            for await (const result of this.simulator.execute(commandLine)) {
                 if (this.isAborted) break;
 
                 if (result.type === 'clear') {
                     this.clearConsole();
-                } else {
-                    this.printLine(result);
-                    this.scrollToBottom();
+                    continue;
+                }
 
-                    // tracerouteのホップデータを収集
-                    if (result.hopData) {
-                        hopDataList.push(result.hopData);
-                        await this.sleep(50);
-                    }
+                if (result.type === 'error' || result.failed) {
+                    hasError = true;
+                }
 
-                    // 1行ずつ表示する遅延（コマンド行以外）
-                    if (result.type !== 'command') {
-                        await this.sleep(200);
+                // 1. traceroute のヘッダーを受け取った時点でルート表示を更新
+                if (result.tracerouteHeader) {
+                    if (result.tracerouteHeader.routes) {
+                        routeData = result.tracerouteHeader.routes;
                     }
+                    if (this.visualizer && typeof this.visualizer.setupRoute === 'function') {
+                        this.visualizer.setupRoute(routeData);
+                    }
+                }
+
+                // 2. traceroute のホップ行 (hopData) のアニメーション同期
+                if (result.hopData) {
+                    hopDataList.push(result.hopData);
+                    if (!this.isAborted && !hasError && this.visualizer && typeof this.visualizer.animateTracerouteHop === 'function') {
+                        // パケットが hop N に到達するアニメーション (所要時間 350ms)
+                        // 到達直後にホップ行をコンソールに出力することで、パケット到達と行出力の時刻差を実質 0ms に同期
+                        await this.visualizer.animateTracerouteHop(result.hopIndex, routeData || hopDataList, 350);
+                    }
+                }
+
+                // 3. ping のステップ行 (pingStep) のアニメーション同期
+                if (result.pingStep) {
+                    if (!this.isAborted && !hasError && this.visualizer && typeof this.visualizer.animatePingStep === 'function') {
+                        await this.visualizer.animatePingStep(routeData, 350);
+                    }
+                }
+
+                // 4. nslookup / ipconfig の開始時アニメーション
+                if (result.type === 'command') {
+                    if (cmd === 'nslookup' && !hasError) {
+                        this.visualizer.animateNslookup();
+                    } else if ((cmd === 'ipconfig' || cmd === 'ifconfig' || cmd === 'whoami') && !hasError) {
+                        this.visualizer.animateIpconfig();
+                    }
+                }
+
+                // コンソールに行を出力（即座に描画）
+                this.printLine(result);
+                this.scrollToBottom();
+
+                // コマンド行以外は、スムーズな描画と中断検知のために極短い遅延を挟む
+                if (result.type !== 'command') {
+                    await this.sleep(20);
                 }
             }
 
-            // 中断されておらず、かつエラーがない場合のみアニメーション実行
-            const hasError = Array.isArray(results) && (results.ok === false || results.some(r => r.type === 'error'));
-            const isSuccess = !this.isAborted && !hasError;
-
-            if (isSuccess) {
-                // すべての出力が終わった後にアニメーションを開始
-                if (cmd === 'traceroute' || cmd === 'tracert') {
-                    if (hopDataList.length > 0) {
-                        routeData = hopDataList;
-                    }
-                    this.visualizer.executeAnimation({ type: 'traceroute', route: routeData });
-                } else if (cmd === 'ping') {
-                    if (this.simulator.routesData && this.simulator.routesData[domain]) {
-                        routeData = this.simulator.routesData[domain];
-                    }
-                    this.visualizer.executeAnimation({ type: 'ping', route: routeData });
-                } else if (cmd === 'nslookup') {
-                    this.visualizer.executeAnimation({ type: 'nslookup' });
-                } else if (cmd === 'ipconfig' || cmd === 'ifconfig' || cmd === 'whoami') {
-                    this.visualizer.executeAnimation({ type: 'ipconfig' });
-                }
-            } else if (!this.isAborted && hasError) {
-                // 失敗時は失敗アニメーション
+            // 終了後のアニメーション処理 (失敗時は失敗アニメーション)
+            if (!this.isAborted && hasError) {
+                // 失敗時は失敗アニメーション (PC -> ルータで赤色パケット消滅)
                 this.visualizer.executeAnimation({ type: cmd, failed: true });
+            } else if (!this.isAborted && !hasError) {
+                // 成功時の最終記録 (「🔄 アニメーション再生」ボタン用)
+                if (cmd === 'traceroute' || cmd === 'tracert') {
+                    this.visualizer.lastCommand = { type: 'traceroute', route: routeData || hopDataList };
+                } else if (cmd === 'ping') {
+                    this.visualizer.lastCommand = { type: 'ping', route: routeData };
+                } else {
+                    this.visualizer.lastCommand = { type: cmd };
+                }
+                const replayBtn = document.getElementById('replay-animation');
+                if (replayBtn) replayBtn.style.display = 'block';
             }
         } catch (error) {
             console.error('コマンド実行中にエラーが発生しました:', error);

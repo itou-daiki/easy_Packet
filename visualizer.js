@@ -308,6 +308,9 @@ class NetworkVisualizer {
 
             if (!nextNode) {
                 packet.active = false;
+                if (typeof packet.onComplete === 'function') {
+                    try { packet.onComplete(); } catch (e) {}
+                }
                 return false;
             }
 
@@ -454,6 +457,85 @@ class NetworkVisualizer {
             const returnRoute = [this.nodes.router1, this.nodes.pc];
             this.addPacket(returnRoute, '#68d391', 4);
         }, 500);
+    }
+
+    // ルート設定（動的ノード生成と描画）
+    setupRoute(routeData) {
+        if (routeData && routeData.length > 0) {
+            this.currentRoute = routeData;
+            this.drawStaticNetwork();
+            return this.dynamicNodes;
+        } else {
+            this.currentRoute = null;
+            this.drawStaticNetwork();
+            return null;
+        }
+    }
+
+    // 指定したノード列に沿ってパケットを移動させ、完了時に resolve する
+    animatePacketAlongRoute(routeNodes, color = '#ffd666', durationMs = 500) {
+        if (!routeNodes || routeNodes.length < 2) return Promise.resolve();
+
+        const segments = routeNodes.length - 1;
+        const speed = Math.max(0.5, (segments * 1667) / Math.max(50, durationMs));
+
+        return new Promise((resolve) => {
+            let resolved = false;
+            const complete = () => {
+                if (!resolved) {
+                    resolved = true;
+                    resolve();
+                }
+            };
+
+            this.packets.push({
+                route: routeNodes,
+                currentIndex: 0,
+                progress: 0,
+                color: color,
+                speed: speed,
+                active: true,
+                onComplete: complete
+            });
+
+            // フォールバック
+            setTimeout(complete, durationMs + 100);
+        });
+    }
+
+    // traceroute の特定ホップへの往復アニメーション（往路完了時にresolve）
+    async animateTracerouteHop(hopIndex, routeData, durationMs = 500) {
+        const nodes = this.setupRoute(routeData);
+        if (!nodes || nodes.length < 2) return;
+
+        const targetNodeIndex = Math.min(hopIndex + 1, nodes.length - 1);
+        const forwardRoute = nodes.slice(0, targetNodeIndex + 1);
+
+        // 往路パケット（PC -> hop N）: durationMs かけて到達
+        await this.animatePacketAlongRoute(forwardRoute, '#ffd666', durationMs);
+
+        // 復路パケット（hop N -> PC）: 非同期に飛ばす
+        const returnRoute = [...forwardRoute].reverse();
+        this.animatePacketAlongRoute(returnRoute, '#68d391', Math.min(300, durationMs * 0.6));
+    }
+
+    // ping の往復アニメーション
+    async animatePingStep(routeData, durationMs = 500) {
+        let nodes = this.setupRoute(routeData);
+        if (!nodes || nodes.length < 2) {
+            if (this.nodes) {
+                nodes = [this.nodes.pc, this.nodes.router1, this.nodes.isp, this.nodes.router2, this.nodes.server];
+            } else {
+                return;
+            }
+        }
+
+        const halfDuration = Math.max(100, Math.floor(durationMs / 2));
+        // 往路: PC -> サーバ
+        await this.animatePacketAlongRoute(nodes, '#ff6b6b', halfDuration);
+        // 復路: サーバ -> PC
+        const returnRoute = [...nodes].reverse();
+        await this.animatePacketAlongRoute(returnRoute, '#68d391', halfDuration);
     }
 
     // すべてのパケットをクリア
