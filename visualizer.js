@@ -15,35 +15,57 @@ class NetworkVisualizer {
     setupCanvas() {
         // Retinaディスプレイ対応
         const dpr = window.devicePixelRatio || 1;
-        const rect = this.canvas.getBoundingClientRect();
 
-        // 既にexpandCanvasで拡張されている場合は、その幅を維持
-        const currentStyleWidth = this.canvas.style.width;
-        if (currentStyleWidth && parseFloat(currentStyleWidth) > rect.width) {
-            // 拡張済みの幅を維持
-            this.width = parseFloat(currentStyleWidth);
-        } else {
-            // デフォルトの幅を使用
-            this.canvas.style.width = '';
-            this.width = rect.width;
+        // 親コンテナ（.canvas-wrapper または .network-diagram）を測定
+        // canvas 自身から測定するとフィードバックループ（F-1）になるため必ず親要素を測る
+        const container = this.canvas.parentElement || this.canvas;
+        let rectWidth = container.clientWidth;
+        let rectHeight = container.clientHeight;
+
+        // もしラッパーがなく .network-diagram を直接親にしている場合の余白・見出し考慮
+        if (container.classList && container.classList.contains('network-diagram')) {
+            const computed = window.getComputedStyle ? window.getComputedStyle(container) : {};
+            const padX = parseFloat(computed.paddingLeft || 0) + parseFloat(computed.paddingRight || 0);
+            const padY = parseFloat(computed.paddingTop || 0) + parseFloat(computed.paddingBottom || 0);
+            const h2 = container.querySelector ? container.querySelector('h2') : null;
+            const h2Height = h2 ? (h2.offsetHeight || 30) + 10 : 0;
+            rectWidth = Math.max(100, rectWidth - padX);
+            rectHeight = Math.max(100, rectHeight - padY - h2Height);
+        } else if (!rectWidth || !rectHeight) {
+            // clientWidth が取れない場合の getBoundingClientRect フォールバック
+            const rect = container.getBoundingClientRect ? container.getBoundingClientRect() : { width: 800, height: 250 };
+            rectWidth = rect.width;
+            rectHeight = rect.height;
         }
 
-        this.canvas.width = this.width * dpr;
-        this.canvas.height = rect.height * dpr;
-        this.ctx.scale(dpr, dpr);
-        this.height = rect.height;
+        // 表示サイズの保持（CSS ピクセル）
+        this.width = Math.max(100, rectWidth);
+        this.height = Math.max(100, rectHeight);
+
+        // CSSスタイルはパーセント指定（固定）
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+
+        // バッキングストアのピクセル数を設定
+        this.canvas.width = Math.round(this.width * dpr);
+        this.canvas.height = Math.round(this.height * dpr);
+
+        // scale() 累積を構造的に排除するため setTransform を使用
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
     setupReplayButton() {
         const replayBtn = document.createElement('button');
         replayBtn.id = 'replay-animation';
-        replayBtn.innerHTML = '🔄 アニメーション再生';
+        replayBtn.textContent = '🔄 アニメーション再生';
         replayBtn.className = 'replay-btn';
         replayBtn.style.display = 'none';
         replayBtn.onclick = () => this.replayLastAnimation();
         
-        const diagramDiv = document.querySelector('.network-diagram');
-        diagramDiv.appendChild(replayBtn);
+        const parent = document.querySelector('.canvas-wrapper') || document.querySelector('.network-diagram');
+        if (parent) {
+            parent.appendChild(replayBtn);
+        }
     }
 
     replayLastAnimation() {
@@ -85,26 +107,9 @@ class NetworkVisualizer {
         const rightMargin = 50;
         const totalNodes = routeData.length + 1; // PC + 経由地
 
-        // 推奨間隔で必要な幅を計算
-        const idealSpacing = 120;
-        const minSpacing = 90;
-        const requiredWidth = leftMargin + (totalNodes - 1) * idealSpacing + rightMargin;
-
-        // canvasの幅を必要に応じて拡張
-        if (requiredWidth > this.width) {
-            this.expandCanvas(requiredWidth);
-        }
-
-        // 利用可能な幅を再計算
-        const availableWidth = this.width - leftMargin - rightMargin;
-        let spacing = availableWidth / (totalNodes - 1);
-
-        // 間隔の調整
-        if (spacing < minSpacing) {
-            spacing = minSpacing;
-        } else if (spacing > idealSpacing) {
-            spacing = idealSpacing;
-        }
+        // canvas幅内に必ず収まるように間隔を計算
+        const availableWidth = Math.max(100, this.width - leftMargin - rightMargin);
+        const spacing = totalNodes > 1 ? availableWidth / (totalNodes - 1) : availableWidth;
 
         // 開始ノード（PC）
         nodes.push({
@@ -167,16 +172,6 @@ class NetworkVisualizer {
         });
 
         return nodes;
-    }
-
-    // canvasの幅を拡張する
-    expandCanvas(newWidth) {
-        const dpr = window.devicePixelRatio || 1;
-        this.canvas.style.width = `${newWidth}px`;
-        this.canvas.width = newWidth * dpr;
-        this.canvas.height = this.canvas.height; // 高さは維持
-        this.ctx.scale(dpr, dpr);
-        this.width = newWidth;
     }
 
     // 静的なネットワーク図を描画

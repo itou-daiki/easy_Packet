@@ -55,23 +55,31 @@ body {
 
 /* レスポンシブデザイン: 小さめの画面 */
 @media (max-width: 900px) {
+    body {
+        height: auto;
+        min-height: 100vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
     .container {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr auto;
+        grid-template-rows: auto;
         gap: 12px;
+        overflow: visible;
     }
 
     .tutorial-area {
-        max-height: 200px;
+        max-height: 250px;
         order: 1;
     }
 
-    .execution-area {
+    .visualization-area {
         order: 2;
     }
 
-    .command-area {
-        max-height: 180px;
+    .commands-area {
+        max-height: 250px;
         order: 3;
     }
 }
@@ -192,8 +200,8 @@ body {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: hidden;
+    position: relative;
 }
 
 .network-diagram h2 {
@@ -203,10 +211,18 @@ body {
     flex-shrink: 0;
 }
 
+.canvas-wrapper {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
 .replay-btn {
     position: absolute;
-    top: 15px;
-    right: 15px;
+    top: 10px;
+    right: 10px;
     padding: 8px 16px;
     background: linear-gradient(135deg, #667eea 0%, #5568d3 100%);
     color: white;
@@ -230,17 +246,12 @@ body {
     transform: translateY(0);
 }
 
-.network-diagram {
-    position: relative;
-}
-
 #network-canvas {
     display: block;
-    min-width: 100%;
-    flex: 1;
+    width: 100%;
+    height: 100%;
     background: #f0f4f8;
     border-radius: 6px;
-    min-height: 0;
 }
 
 .console-wrapper {

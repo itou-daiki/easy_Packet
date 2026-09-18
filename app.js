@@ -47,11 +47,24 @@ class EasyPacketApp {
             });
         });
 
-        // ウィンドウリサイズ対応
-        window.addEventListener('resize', () => {
-            this.visualizer.setupCanvas();
-            this.visualizer.drawStaticNetwork();
-        });
+        // ウィンドウ・コンテナリサイズ対応 (ResizeObserver + デバウンス 100ms)
+        let resizeTimeout = null;
+        const debouncedResize = () => {
+            if (resizeTimeout) clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                this.visualizer.setupCanvas();
+                this.visualizer.drawStaticNetwork();
+            }, 100);
+        };
+
+        const canvasWrapper = document.querySelector('.canvas-wrapper') || document.querySelector('.network-diagram');
+        if (typeof ResizeObserver !== 'undefined' && canvasWrapper) {
+            const observer = new ResizeObserver(() => {
+                debouncedResize();
+            });
+            observer.observe(canvasWrapper);
+        }
+        window.addEventListener('resize', debouncedResize);
     }
 
     printWelcome() {
