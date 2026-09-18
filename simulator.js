@@ -1,8 +1,9 @@
 // コマンドシミュレーター
 class CommandSimulator {
     constructor() {
-        this.dnsData = {};
-        this.routesData = {};
+        // オフライン用埋め込みデータで初期化 (data.js から同期的に取得)
+        this.dnsData = typeof DEFAULT_DNS_DATA !== 'undefined' ? Object.assign({}, DEFAULT_DNS_DATA) : {};
+        this.routesData = typeof DEFAULT_ROUTES_DATA !== 'undefined' ? Object.assign({}, DEFAULT_ROUTES_DATA) : {};
         this.loadData();
     }
 
@@ -12,10 +13,10 @@ class CommandSimulator {
                 fetch('dns.json'),
                 fetch('routes.json')
             ]);
-            this.dnsData = await dnsResponse.json();
-            this.routesData = await routesResponse.json();
+            if (dnsResponse.ok) this.dnsData = await dnsResponse.json();
+            if (routesResponse.ok) this.routesData = await routesResponse.json();
         } catch (error) {
-            console.error('データの読み込みに失敗しました:', error);
+            // オフライン時・file:// 環境は埋め込みデータをそのまま使用
         }
     }
 
@@ -24,31 +25,23 @@ class CommandSimulator {
         const results = [];
         results.push({ type: 'command', text: `$ nslookup ${domain}` });
 
-        await this.sleep(500);
+        await this.sleep(300);
 
-        try {
-            // DNS over HTTPS (Google Public DNS) を使用して実際のIPアドレスを取得
-            const response = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
-            const data = await response.json();
+        // オフラインDNSデータから検索
+        const ip = this.dnsData[domain];
 
-            if (data.Status !== 0 || !data.Answer || data.Answer.length === 0) {
-                results.push({ type: 'error', text: `*** ${domain} が見つかりません: Non-existent domain` });
-                return results;
-            }
-
-            const ip = data.Answer[0].data;
-
-            results.push({ type: 'info', text: 'サーバー:  dns.google' });
-            results.push({ type: 'info', text: 'Address:  8.8.8.8' });
-            results.push({ type: 'success', text: '' });
-            results.push({ type: 'success', text: `名前:    ${domain}` });
-            results.push({ type: 'success', text: `Address: ${ip}` });
-
-            return results;
-        } catch (error) {
-            results.push({ type: 'error', text: `*** DNS問い合わせに失敗しました: ${error.message}` });
+        if (!ip || ip === 'TIMEOUT') {
+            results.push({ type: 'error', text: `*** ${domain} が見つかりません: Non-existent domain` });
             return results;
         }
+
+        results.push({ type: 'info', text: 'サーバー:  dns.google' });
+        results.push({ type: 'info', text: 'Address:  8.8.8.8' });
+        results.push({ type: 'success', text: '' });
+        results.push({ type: 'success', text: `名前:    ${domain}` });
+        results.push({ type: 'success', text: `Address: ${ip}` });
+
+        return results;
     }
 
     // ping コマンド
@@ -56,42 +49,47 @@ class CommandSimulator {
         const results = [];
         results.push({ type: 'command', text: `$ ping ${domain}` });
 
-        await this.sleep(300);
+        await this.sleep(200);
 
-        try {
-            // DNS over HTTPS を使用して実際のIPアドレスを取得
-            const response = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
-            const data = await response.json();
+        // IP直接指定か、DNSから検索
+        const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(domain);
+        let ip = isIpAddress ? domain : this.dnsData[domain];
 
-            if (data.Status !== 0 || !data.Answer || data.Answer.length === 0) {
-                results.push({ type: 'error', text: `ping: ${domain}: Name or service not known` });
-                return results;
-            }
-
-            const ip = data.Answer[0].data;
-
-            results.push({ type: 'info', text: `PING ${domain} (${ip}): 56 data bytes` });
-
-            // 4回のpingを送信（シミュレーション）
-            for (let i = 0; i < 4; i++) {
-                await this.sleep(800);
-                const time = (Math.random() * 35 + 15).toFixed(1);
-                const ttl = Math.floor(Math.random() * 10 + 54);
-                results.push({
-                    type: 'success',
-                    text: `64 bytes from ${ip}: icmp_seq=${i} ttl=${ttl} time=${time} ms`
-                });
-            }
-
-            results.push({ type: 'success', text: '' });
-            results.push({ type: 'success', text: `--- ${domain} ping statistics ---` });
-            results.push({ type: 'success', text: '4 packets transmitted, 4 packets received, 0% packet loss' });
-
-            return results;
-        } catch (error) {
+        if (!ip) {
             results.push({ type: 'error', text: `ping: ${domain}: DNS解決に失敗しました` });
             return results;
         }
+
+        if (ip === 'TIMEOUT') {
+            results.push({ type: 'info', text: `PING ${domain} (192.0.2.99): 56 data bytes` });
+            for (let i = 0; i < 4; i++) {
+                await this.sleep(300);
+                results.push({ type: 'error', text: `Request timeout for icmp_seq ${i}` });
+            }
+            results.push({ type: 'info', text: '' });
+            results.push({ type: 'info', text: `--- ${domain} ping statistics ---` });
+            results.push({ type: 'error', text: '4 packets transmitted, 0 packets received, 100.0% packet loss' });
+            return results;
+        }
+
+        results.push({ type: 'info', text: `PING ${domain} (${ip}): 56 data bytes` });
+
+        // 4回のpingを送信
+        for (let i = 0; i < 4; i++) {
+            await this.sleep(300);
+            const time = (Math.random() * 20 + 10).toFixed(1);
+            const ttl = Math.floor(Math.random() * 8 + 56);
+            results.push({
+                type: 'success',
+                text: `64 bytes from ${ip}: icmp_seq=${i} ttl=${ttl} time=${time} ms`
+            });
+        }
+
+        results.push({ type: 'success', text: '' });
+        results.push({ type: 'success', text: `--- ${domain} ping statistics ---` });
+        results.push({ type: 'success', text: '4 packets transmitted, 4 packets received, 0% packet loss' });
+
+        return results;
     }
 
     // traceroute コマンド
@@ -99,231 +97,65 @@ class CommandSimulator {
         const results = [];
         results.push({ type: 'command', text: `$ traceroute ${domain}` });
 
-        await this.sleep(500);
+        await this.sleep(300);
 
-        try {
-            // DNS over HTTPS を使用して実際のIPアドレスを取得
-            const dnsResponse = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
-            const dnsData = await dnsResponse.json();
+        // IP直接指定か、DNSから検索
+        const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(domain);
+        let ip = isIpAddress ? domain : this.dnsData[domain];
 
-            if (dnsData.Status !== 0 || !dnsData.Answer || dnsData.Answer.length === 0) {
-                results.push({ type: 'error', text: `traceroute: ${domain}: Name or service not known` });
-                return results;
-            }
-
-            const ip = dnsData.Answer[0].data;
-
-            results.push({ type: 'info', text: `traceroute to ${domain} (${ip}), 30 hops max, 60 byte packets` });
-            results.push({ type: 'info', text: '実際の経路を取得中...' });
-
-            // 実際のtraceroute情報を外部APIから取得
-            const routes = await this.fetchRealTraceroute(domain);
-
-            if (routes && routes.length > 0) {
-                results.push({ type: 'success', text: `(※${domain}の実際のIP: ${ip} から推定した経路)` });
-
-                for (let i = 0; i < routes.length; i++) {
-                    await this.sleep(800);
-                    const hop = routes[i];
-
-                    results.push({
-                        type: 'success',
-                        text: `${i + 1}  ${hop.name} (${hop.ip})  ${hop.time1} ms  ${hop.time2} ms  ${hop.time3} ms`,
-                        hopData: hop
-                    });
-                }
-            } else {
-                // フォールバック: APIが使えない場合はシミュレーション
-                results.push({ type: 'warning', text: '(※実際の経路取得に失敗、シミュレーションで表示)' });
-
-                const fallbackRoutes = this.routesData[domain] || [
-                    { ip: "192.168.1.1", name: "my-router.local", time: 1 },
-                    { ip: "10.0.0.1", name: "isp-gateway.net", time: 10 },
-                    { ip: ip, name: domain, time: 25 }
-                ];
-
-                for (let i = 0; i < fallbackRoutes.length; i++) {
-                    await this.sleep(1000);
-                    const hop = fallbackRoutes[i];
-                    const time1 = (hop.time + Math.random() * 2).toFixed(3);
-                    const time2 = (hop.time + Math.random() * 2).toFixed(3);
-                    const time3 = (hop.time + Math.random() * 2).toFixed(3);
-
-                    results.push({
-                        type: 'success',
-                        text: `${i + 1}  ${hop.name} (${hop.ip})  ${time1} ms  ${time2} ms  ${time3} ms`,
-                        hopData: { ip: hop.ip, name: hop.name, time: hop.time }
-                    });
-                }
-            }
-
-            return results;
-        } catch (error) {
-            results.push({ type: 'error', text: `traceroute: エラーが発生しました: ${error.message}` });
+        if (!ip || ip === 'TIMEOUT') {
+            results.push({ type: 'error', text: `traceroute: ${domain}: Name or service not known` });
             return results;
         }
-    }
 
-    // 実際のtraceroute情報を取得（Geolocationベースの推定）
-    async fetchRealTraceroute(domain) {
-        try {
-            // DNS解決で実際のIPアドレスを取得
-            const dnsResponse = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
-            const dnsData = await dnsResponse.json();
+        results.push({ type: 'info', text: `traceroute to ${domain} (${ip}), 30 hops max, 60 byte packets` });
 
-            if (dnsData.Status !== 0 || !dnsData.Answer || dnsData.Answer.length === 0) {
-                return null;
-            }
-
-            const targetIP = dnsData.Answer[0].data;
-
-            // 目的地のGeolocation情報を取得
-            const geoResponse = await fetch(`https://ipapi.co/${targetIP}/json/`);
-
-            if (!geoResponse.ok) {
-                console.log('Geolocation API failed, using fallback');
-                return null;
-            }
-
-            const geoData = await geoResponse.json();
-
-            // 地理情報を元に現実的な経路を生成
-            return this.generateRealisticRoute(domain, targetIP, geoData);
-        } catch (error) {
-            console.error('Real traceroute error:', error);
-            return null;
+        // 経路データ (routesData) を取得、未登録ドメインはRFC 5737準拠のデフォルト経路
+        let routes = this.routesData[domain];
+        if (!routes) {
+            routes = [
+                { ip: "192.168.1.1", name: "my-router.local", time: 1 },
+                { ip: "10.0.0.1", name: "provider-router-1.isp.net", time: 10 },
+                { ip: "198.51.100.1", name: "ix-router.net", time: 18 },
+                { ip: "203.0.113.1", name: "backbone-router.net", time: 24 },
+                { ip: ip, name: domain, time: 28 }
+            ];
         }
-    }
 
-    // 地理情報を元に現実的な経路を生成
-    generateRealisticRoute(domain, targetIP, geoData) {
-        const routes = [];
-        let cumulativeTime = 0;
+        for (let i = 0; i < routes.length; i++) {
+            await this.sleep(300);
+            const hop = routes[i];
+            const baseTime = hop.time || (i + 1) * 6;
+            const time1 = (baseTime + Math.random() * 1.5).toFixed(3);
+            const time2 = (baseTime + Math.random() * 1.5).toFixed(3);
+            const time3 = (baseTime + Math.random() * 1.5).toFixed(3);
 
-        // 1. ローカルルーター (Home Router)
-        cumulativeTime += 1 + Math.random() * 1;
-        routes.push({
-            ip: "192.168.1.1",
-            name: "home-router.local",
-            time: cumulativeTime,
-            time1: (cumulativeTime + Math.random() * 0.5).toFixed(3),
-            time2: (cumulativeTime + Math.random() * 0.5).toFixed(3),
-            time3: (cumulativeTime + Math.random() * 0.5).toFixed(3)
-        });
-
-        // 2. ISPゲートウェイ (ISP Gateway)
-        cumulativeTime += 3 + Math.random() * 2;
-        routes.push({
-            ip: "10.0.0.1",
-            name: "gateway.isp.net",
-            time: cumulativeTime,
-            time1: (cumulativeTime + Math.random() * 1).toFixed(3),
-            time2: (cumulativeTime + Math.random() * 1).toFixed(3),
-            time3: (cumulativeTime + Math.random() * 1).toFixed(3)
-        });
-
-        // 3. ISP地域ルーター (Regional ISP Router)
-        cumulativeTime += 4 + Math.random() * 3;
-        routes.push({
-            ip: "203.0.113.10",
-            name: "core-router.isp.net",
-            time: cumulativeTime,
-            time1: (cumulativeTime + Math.random() * 1.5).toFixed(3),
-            time2: (cumulativeTime + Math.random() * 1.5).toFixed(3),
-            time3: (cumulativeTime + Math.random() * 1.5).toFixed(3)
-        });
-
-        // 国・地域に応じた中間ホップを追加
-        const country = geoData.country_code || 'US';
-        const org = geoData.org || 'Unknown';
-
-        // 4. バックボーンネットワーク
-        if (country !== 'JP') {
-            // 国際接続の場合
-            cumulativeTime += 15 + Math.random() * 10;
-            routes.push({
-                ip: "198.32.176.1",
-                name: "international-ix.net",
-                time: cumulativeTime,
-                time1: (cumulativeTime + Math.random() * 3).toFixed(3),
-                time2: (cumulativeTime + Math.random() * 3).toFixed(3),
-                time3: (cumulativeTime + Math.random() * 3).toFixed(3)
+            results.push({
+                type: 'success',
+                text: `${i + 1}  ${hop.name} (${hop.ip})  ${time1} ms  ${time2} ms  ${time3} ms`,
+                hopData: { ip: hop.ip, name: hop.name, time: baseTime }
             });
         }
 
-        // 5. 地域バックボーン
-        cumulativeTime += 8 + Math.random() * 5;
-        const regionName = country === 'JP' ? 'jp-backbone' :
-                          country === 'US' ? 'us-backbone' :
-                          'global-backbone';
-        routes.push({
-            ip: `${Math.floor(Math.random() * 220) + 1}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.1`,
-            name: `${regionName}.net`,
-            time: cumulativeTime,
-            time1: (cumulativeTime + Math.random() * 2).toFixed(3),
-            time2: (cumulativeTime + Math.random() * 2).toFixed(3),
-            time3: (cumulativeTime + Math.random() * 2).toFixed(3)
-        });
-
-        // 6. CDN/サービスプロバイダのエッジ (該当する場合)
-        if (org.toUpperCase().includes('GOOGLE') ||
-            org.toUpperCase().includes('AMAZON') ||
-            org.toUpperCase().includes('CLOUDFLARE') ||
-            org.toUpperCase().includes('MICROSOFT')) {
-            cumulativeTime += 3 + Math.random() * 2;
-            const cdnName = org.toUpperCase().includes('GOOGLE') ? 'google-edge' :
-                           org.toUpperCase().includes('AMAZON') ? 'aws-edge' :
-                           org.toUpperCase().includes('CLOUDFLARE') ? 'cloudflare-edge' :
-                           org.toUpperCase().includes('MICROSOFT') ? 'azure-edge' :
-                           'cdn-edge';
-            routes.push({
-                ip: `${Math.floor(Math.random() * 220) + 1}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.2`,
-                name: `${cdnName}.net`,
-                time: cumulativeTime,
-                time1: (cumulativeTime + Math.random() * 1).toFixed(3),
-                time2: (cumulativeTime + Math.random() * 1).toFixed(3),
-                time3: (cumulativeTime + Math.random() * 1).toFixed(3)
-            });
-        }
-
-        // 7. 最終目的地
-        cumulativeTime += 2 + Math.random() * 2;
-        routes.push({
-            ip: targetIP,
-            name: domain,
-            time: cumulativeTime,
-            time1: (cumulativeTime + Math.random() * 1).toFixed(3),
-            time2: (cumulativeTime + Math.random() * 1).toFixed(3),
-            time3: (cumulativeTime + Math.random() * 1).toFixed(3)
-        });
-
-        return routes;
+        return results;
     }
 
-    // ipconfig コマンド
+    // ipconfig コマンド (F-2, F-9 解消: 外部通信ゼロ・安全な教育用構成)
     async ipconfig() {
         const results = [];
         results.push({ type: 'command', text: `$ ipconfig` });
 
-        await this.sleep(500);
+        await this.sleep(300);
 
-        try {
-            const response = await fetch('https://api.ipify.org?format=json');
-            const data = await response.json();
-
-            results.push({ type: 'info', text: 'Windows IP Configuration' });
-            results.push({ type: 'info', text: '(※ローカル情報は学習用の架空のデータです)' });
-            results.push({ type: 'success', text: '' });
-            results.push({ type: 'success', text: 'Ethernet adapter:' });
-            results.push({ type: 'success', text: '   IPv4 Address: 192.168.1.100' });
-            results.push({ type: 'success', text: '   Subnet Mask: 255.255.255.0' });
-            results.push({ type: 'success', text: '   Default Gateway: 192.168.1.1' });
-            results.push({ type: 'success', text: '' });
-            results.push({ type: 'info', text: `Global IP Address: ${data.ip} (実際のIPアドレス)` });
-        } catch (error) {
-            results.push({ type: 'error', text: 'グローバルIPアドレスの取得に失敗しました' });
-            results.push({ type: 'info', text: 'ローカルIP: 192.168.1.100 (学習用の架空のデータ)' });
-        }
+        results.push({ type: 'info', text: 'Windows IP Configuration' });
+        results.push({ type: 'info', text: '(※学習用の架空のネットワーク構成です)' });
+        results.push({ type: 'success', text: '' });
+        results.push({ type: 'success', text: 'Ethernet adapter ローカル エリア接続:' });
+        results.push({ type: 'success', text: '   IPv4 アドレス . . . . . . . . . . . : 192.168.1.100' });
+        results.push({ type: 'success', text: '   サブネット マスク . . . . . . . . . : 255.255.255.0' });
+        results.push({ type: 'success', text: '   デフォルト ゲートウェイ . . . . . . : 192.168.1.1' });
+        results.push({ type: 'success', text: '   DNS サーバー. . . . . . . . . . . . : 192.168.1.1' });
+        results.push({ type: 'success', text: '                                         8.8.8.8' });
 
         return results;
     }
