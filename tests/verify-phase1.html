@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Phase 1 実ブラウザ検証</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        #test-report {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40vh;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: monospace;
+            padding: 10px;
+            overflow-y: auto;
+            border-top: 2px solid #0071BC;
+            z-index: 99999;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>easyPacket Phase 1 検証</h1>
+    </header>
+    <div class="container">
+        <aside class="tutorial-area">
+            <h2>チュートリアル</h2>
+        </aside>
+        <main class="visualization-area">
+            <div class="network-diagram">
+                <h2>🌐 ネットワーク模式図</h2>
+                <div class="canvas-wrapper">
+                    <canvas id="network-canvas" width="800" height="400"></canvas>
+                </div>
+            </div>
+            <div class="console-wrapper">
+                <h2>💻 コンソール</h2>
+                <div id="console-output"></div>
+                <div class="console-input-wrapper">
+                    <span class="prompt">$ </span>
+                    <textarea id="console-input"></textarea>
+                </div>
+            </div>
+        </main>
+        <aside class="commands-area">
+            <h2>コマンド</h2>
+            <button class="cmd-btn" data-cmd="ping">ping</button>
+        </aside>
+    </div>
+
+    <pre id="test-report">検証中...</pre>
+
+    <script src="../visualizer.js"></script>
+    <script src="../simulator.js"></script>
+    <script src="../app.js"></script>
+    <script>
+        window.addEventListener('load', async () => {
+            const reportEl = document.getElementById('test-report');
+            const lines = [];
+            const log = (msg) => {
+                lines.push(msg);
+                console.log(msg);
+                reportEl.textContent = lines.join('\n');
+            };
+
+            log('=== easyPacket Phase 1 実ブラウザ検証 ===');
+            const dpr = window.devicePixelRatio || 1;
+            log(`window.devicePixelRatio: ${dpr}`);
+            log(`navigator.userAgent: ${navigator.userAgent}`);
+
+            const canvas = document.getElementById('network-canvas');
+            const visualizer = window.app ? window.app.visualizer : new NetworkVisualizer('network-canvas');
+
+            // 1. 初期測定
+            const initialRect = canvas.getBoundingClientRect();
+            const initialCanvasWidth = canvas.width;
+            const initialCanvasHeight = canvas.height;
+            log(`\n[初期測定]`);
+            log(`canvas.width: ${initialCanvasWidth}px, canvas.height: ${initialCanvasHeight}px`);
+            log(`CSS幅 (rect.width): ${initialRect.width}px, CSS高 (rect.height): ${initialRect.height}px`);
+            log(`横比率: ${(initialCanvasWidth / initialRect.width).toFixed(4)} (目標: ${dpr.toFixed(4)})`);
+            log(`縦比率: ${(initialCanvasHeight / initialRect.height).toFixed(4)} (目標: ${dpr.toFixed(4)})`);
+
+            // 2. resize を 20 回連続発火
+            log(`\n[resize 20回連続発火テスト]`);
+            const resizeHistory = [];
+            for (let i = 1; i <= 20; i++) {
+                // setupCanvas を呼び出し（同期的に即座に反映して測定）
+                visualizer.setupCanvas();
+                const r = canvas.getBoundingClientRect();
+                resizeHistory.push({
+                    i,
+                    cw: canvas.width,
+                    ch: canvas.height,
+                    rw: r.width,
+                    rh: r.height
+                });
+            }
+
+            const final20 = resizeHistory[19];
+            log(`20回後 canvas.width: ${final20.cw}px (初期: ${initialCanvasWidth}px)`);
+            log(`20回後 canvas.height: ${final20.ch}px (初期: ${initialCanvasHeight}px)`);
+            
+            const isWidthStable = (final20.cw === initialCanvasWidth);
+            const isHeightStable = (final20.ch === initialCanvasHeight);
+            log(`判定: canvas.width 不変 = ${isWidthStable ? 'PASS ✅' : 'FAIL ❌'}`);
+            log(`判定: canvas.height 不変 = ${isHeightStable ? 'PASS ✅' : 'FAIL ❌'}`);
+
+            // 3. アスペクト比・真円性テスト
+            const finalRect = canvas.getBoundingClientRect();
+            const widthRatio = final20.cw / finalRect.width;
+            const heightRatio = final20.ch / finalRect.height;
+            const isEquilateral = Math.abs(widthRatio - heightRatio) < 0.01;
+            const isDprMatch = Math.abs(widthRatio - dpr) < 0.05;
+            log(`\n[真円性・スケール検証]`);
+            log(`横スケール比 (canvas.width / CSS幅): ${widthRatio.toFixed(4)}`);
+            log(`縦スケール比 (canvas.height / CSS高): ${heightRatio.toFixed(4)}`);
+            log(`判定: 横比率 == 縦比率 (等方・真円性) = ${isEquilateral ? 'PASS ✅' : 'FAIL ❌'}`);
+            log(`判定: スケール比 == devicePixelRatio = ${isDprMatch ? 'PASS ✅' : 'FAIL ❌'}`);
+
+            // 4. 小画面 (375px) での到達可能性検証
+            log(`\n[到達可能性検証]`);
+            const input = document.getElementById('console-input');
+            const btn = document.querySelector('.cmd-btn');
+            const bodyStyle = window.getComputedStyle(document.body);
+            log(`body overflow-y: ${bodyStyle.overflowY} (auto/visible であるべき)`);
+            log(`input 要素存在: ${!!input}`);
+            log(`button 要素存在: ${!!btn}`);
+            const isAccessible = (bodyStyle.overflowY === 'auto' || bodyStyle.overflowY === 'visible') && !!input && !!btn;
+            log(`判定: 小画面スクロール・操作到達性 = ${isAccessible ? 'PASS ✅' : 'FAIL ❌'}`);
+
+            // 総合判定
+            const allPassed = isWidthStable && isHeightStable && isEquilateral && isAccessible;
+            log(`\n========================================`);
+            log(`総合結果: ${allPassed ? 'ALL TESTS PASSED ✅' : 'TESTS FAILED ❌'}`);
+            log(`========================================`);
+            window.__PHASE1_RESULT__ = {
+                allPassed,
+                dpr,
+                initialCanvasWidth,
+                finalCanvasWidth: final20.cw,
+                widthRatio,
+                heightRatio
+            };
+        });
+    </script>
+</body>
+</html>

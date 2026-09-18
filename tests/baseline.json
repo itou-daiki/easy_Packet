@@ -1,0 +1,52 @@
+{
+  "investigationDate": "2026-09-18",
+  "commit": "31182e0",
+  "metrics": {
+    "F-1": {
+      "name": "canvas_width_doubling",
+      "description": "resizeごとにcanvas.widthとCSS実幅が倍増する",
+      "measurements": [
+        { "resizeCount": 0, "canvasWidth": 1600, "cssWidth": 1600 },
+        { "resizeCount": 1, "canvasWidth": 3200, "cssWidth": 3200 },
+        { "resizeCount": 2, "canvasWidth": 6400, "cssWidth": 6400 },
+        { "resizeCount": 3, "canvasWidth": 12800, "cssWidth": 12800 },
+        { "resizeCount": 4, "canvasWidth": 25600, "cssWidth": 25600 }
+      ]
+    },
+    "F-2": {
+      "name": "external_api_dependencies",
+      "externalEndpoints": [
+        "https://dns.google/resolve",
+        "https://ipapi.co/{ip}/json/",
+        "https://api.ipify.org"
+      ],
+      "blockedBehavior": "all 4 commands fail with fetch error"
+    },
+    "F-3": {
+      "name": "destination_node_overflow",
+      "destinationNodeX": 890,
+      "containerClientWidth": 854,
+      "canvasWidth": 940,
+      "scrollWidth": 970
+    },
+    "F-4": {
+      "name": "initial_output_latency",
+      "firstOutputMs": 6348,
+      "animationStartMs": 8500
+    },
+    "F-13": {
+      "name": "console_permanent_lock_on_render_exception",
+      "isExecutingStaysTrue": true
+    },
+    "F-14": {
+      "name": "successful_animation_on_failed_command",
+      "packetsLength": 1
+    },
+    "F-16": {
+      "name": "contrast_ratios",
+      "placeholder": 3.72,
+      "hostname": 3.63,
+      "connectionLine": 1.34
+    }
+  }
+}
