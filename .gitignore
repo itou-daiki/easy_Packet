@@ -12,6 +12,7 @@ CLAUDE.md
 
 # Serena (MCP Server)
 .serena/
+.omc/
 
 # OS generated files
 Thumbs.db
