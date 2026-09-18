@@ -39,13 +39,17 @@ function isValidEducationalIp(ip) {
   // 100.64.0.0/10 (100.64.0.0 - 100.127.255.255)
   if (a === 100 && b >= 64 && b <= 127) return true;
 
-  // 4. 実在の公開Web/DNSサーバーとして明示的に許可されたIP
+  // 4. 実在の公開Web/DNSサーバーおよびその所属網として明示的に許可されたIP
   const ALLOWED_PUBLIC_IPS = new Set([
     "8.8.8.8",          // Google Public DNS (ipconfigのDNSやnslookupサーバー表示)
     "142.251.24.139",   // google.com (実在Webサーバ)
+    "142.251.24.0",     // google.com 宛先ネットワーク (/24)
     "20.205.243.166",   // github.com
+    "20.205.243.0",     // github.com 宛先ネットワーク (/24)
     "182.22.59.229",    // yahoo.co.jp
+    "182.22.59.0",      // yahoo.co.jp 宛先ネットワーク (/24)
     "20.112.52.29",     // microsoft.com
+    "20.112.52.0",      // microsoft.com 宛先ネットワーク (/24)
     "54.239.28.85",     // amazon.com
     "198.35.26.96",     // wikipedia.org
     "142.250.207.46",   // youtube.com
@@ -80,8 +84,8 @@ test("routes.json のすべてのホップIPがRFC予約領域または許可済
 test("data.js の埋め込みデータ内の全IPがRFC予約領域または許可済み実在IPであること", () => {
   const dataJsContent = fs.readFileSync(path.resolve("data.js"), "utf-8");
   const dummyContext = {};
-  const fn = new Function("window", `${dataJsContent}; return { DEFAULT_DNS_DATA, DEFAULT_ROUTES_DATA };`);
-  const { DEFAULT_DNS_DATA, DEFAULT_ROUTES_DATA } = fn(dummyContext);
+  const fn = new Function("window", `${dataJsContent}; return { DEFAULT_DNS_DATA, DEFAULT_ROUTES_DATA, DEFAULT_ROUTING_TABLES };`);
+  const { DEFAULT_DNS_DATA, DEFAULT_ROUTES_DATA, DEFAULT_ROUTING_TABLES } = fn(dummyContext);
 
   for (const [domain, ip] of Object.entries(DEFAULT_DNS_DATA)) {
     assert.ok(
@@ -96,6 +100,31 @@ test("data.js の埋め込みデータ内の全IPがRFC予約領域または許�
         isValidEducationalIp(hop.ip),
         `data.js DEFAULT_ROUTES_DATA の ${domain} ホップ (${hop.name}: ${hop.ip}) は不正です`
       );
+    }
+  }
+
+  // DEFAULT_ROUTING_TABLES の全IP検証
+  for (const [key, router] of Object.entries(DEFAULT_ROUTING_TABLES)) {
+    assert.ok(
+      isValidEducationalIp(router.ip),
+      `data.js DEFAULT_ROUTING_TABLES のルータ ${key} の IP (${router.ip}) は不正です`
+    );
+    for (const entry of router.table) {
+      // dest の検証 (0.0.0.0/0 などのデフォルトルートは除外)
+      const destIp = entry.dest.split('/')[0];
+      if (destIp !== '0.0.0.0') {
+        assert.ok(
+          isValidEducationalIp(destIp),
+          `data.js DEFAULT_ROUTING_TABLES ${key} の宛先 ${entry.dest} (${destIp}) は不正です`
+        );
+      }
+      // nextHop の検証 ("自身", "-", "まだ不明" は除外)
+      if (entry.nextHop !== '自身' && entry.nextHop !== '-' && entry.nextHop !== 'まだ不明') {
+        assert.ok(
+          isValidEducationalIp(entry.nextHop),
+          `data.js DEFAULT_ROUTING_TABLES ${key} の次ホップ (${entry.nextHop}) は不正です`
+        );
+      }
     }
   }
 });

@@ -51,12 +51,92 @@ const DEFAULT_ROUTES_DATA = {
   ]
 };
 
+const DEFAULT_ROUTING_TABLES = {
+  // あなたのPC (192.168.1.100)
+  "pc": {
+    "name": "あなたのPC (192.168.1.100)",
+    "ip": "192.168.1.100",
+    "table": [
+      { "dest": "192.168.1.0/24", "dist": 0, "nextHop": "自身", "note": "ローカルLAN" },
+      { "dest": "192.168.1.1", "dist": 1, "nextHop": "192.168.1.1", "note": "ホームルータ" },
+      { "dest": "10.0.0.0/8", "dist": 2, "nextHop": "192.168.1.1", "note": "プロバイダ網" },
+      { "dest": "0.0.0.0/0", "dist": "既定", "nextHop": "192.168.1.1", "note": "デフォルトルート" },
+      { "dest": "198.51.100.0/24", "dist": "まだ不明", "nextHop": "-", "note": "遠隔バックボーン" }
+    ]
+  },
+  // ホームルータ (192.168.1.1)
+  "192.168.1.1": {
+    "name": "my-router.local (192.168.1.1)",
+    "ip": "192.168.1.1",
+    "table": [
+      { "dest": "192.168.1.0/24", "dist": 0, "nextHop": "自身", "note": "家庭内LAN" },
+      { "dest": "10.0.0.0/8", "dist": 1, "nextHop": "10.0.0.1", "note": "プロバイダ接続" },
+      { "dest": "203.0.113.0/24", "dist": 2, "nextHop": "10.0.0.1", "note": "インターネットIX" },
+      { "dest": "0.0.0.0/0", "dist": "既定", "nextHop": "10.0.0.1", "note": "デフォルトルート" },
+      { "dest": "198.51.100.0/24", "dist": "まだ不明", "nextHop": "-", "note": "外部バックボーン" }
+    ]
+  },
+  // プロバイダルータ (10.0.0.1)
+  "10.0.0.1": {
+    "name": "provider-router-1.isp.net (10.0.0.1)",
+    "ip": "10.0.0.1",
+    "table": [
+      { "dest": "10.0.0.0/8", "dist": 0, "nextHop": "自身", "note": "ISP内部網" },
+      { "dest": "192.168.1.0/24", "dist": 1, "nextHop": "192.168.1.1", "note": "加入者網" },
+      { "dest": "203.0.113.0/24", "dist": 1, "nextHop": "203.0.113.5", "note": "国内IX網" },
+      { "dest": "198.51.100.0/24", "dist": 1, "nextHop": "198.51.100.1", "note": "バックボーン網" },
+      { "dest": "0.0.0.0/0", "dist": "既定", "nextHop": "203.0.113.5", "note": "デフォルトルート" }
+    ]
+  },
+  // IXルータ (203.0.113.5)
+  "203.0.113.5": {
+    "name": "ix-router.net (203.0.113.5)",
+    "ip": "203.0.113.5",
+    "table": [
+      { "dest": "203.0.113.0/24", "dist": 0, "nextHop": "自身", "note": "IX相互接続点" },
+      { "dest": "10.0.0.0/8", "dist": 1, "nextHop": "10.0.0.1", "note": "ISP網" },
+      { "dest": "142.251.24.0/24", "dist": 1, "nextHop": "142.251.24.139", "note": "Google網" }
+    ]
+  },
+  // バックボーンルータ (198.51.100.1)
+  "198.51.100.1": {
+    "name": "backbone-router.net (198.51.100.1)",
+    "ip": "198.51.100.1",
+    "table": [
+      { "dest": "198.51.100.0/24", "dist": 0, "nextHop": "自身", "note": "基幹網" },
+      { "dest": "10.0.0.0/8", "dist": 1, "nextHop": "10.0.0.1", "note": "ISP網" },
+      { "dest": "20.205.243.0/24", "dist": 1, "nextHop": "20.205.243.166", "note": "GitHub網" }
+    ]
+  },
+  // 国内バックボーン (203.0.113.20)
+  "203.0.113.20": {
+    "name": "jp-backbone.net (203.0.113.20)",
+    "ip": "203.0.113.20",
+    "table": [
+      { "dest": "203.0.113.0/24", "dist": 0, "nextHop": "自身", "note": "国内基幹網" },
+      { "dest": "10.0.0.0/8", "dist": 1, "nextHop": "10.0.0.1", "note": "ISP網" },
+      { "dest": "182.22.59.0/24", "dist": 1, "nextHop": "182.22.59.229", "note": "Yahoo網" }
+    ]
+  },
+  // Microsoft向けエッジルータ (198.51.100.2)
+  "198.51.100.2": {
+    "name": "azure-edge.net (198.51.100.2)",
+    "ip": "198.51.100.2",
+    "table": [
+      { "dest": "198.51.100.0/24", "dist": 0, "nextHop": "自身", "note": "エッジ接続網" },
+      { "dest": "10.0.0.0/8", "dist": 1, "nextHop": "10.0.0.1", "note": "ISP網" },
+      { "dest": "20.112.52.0/24", "dist": 1, "nextHop": "20.112.52.29", "note": "Microsoft網" }
+    ]
+  }
+};
+
 // ブラウザ・Node.js 両対応のエクスポート
 if (typeof window !== 'undefined') {
   window.DEFAULT_DNS_DATA = DEFAULT_DNS_DATA;
   window.DEFAULT_ROUTES_DATA = DEFAULT_ROUTES_DATA;
+  window.DEFAULT_ROUTING_TABLES = DEFAULT_ROUTING_TABLES;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { DEFAULT_DNS_DATA, DEFAULT_ROUTES_DATA };
+  module.exports = { DEFAULT_DNS_DATA, DEFAULT_ROUTES_DATA, DEFAULT_ROUTING_TABLES };
 }

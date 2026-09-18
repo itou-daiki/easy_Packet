@@ -241,7 +241,7 @@ class EasyPacketApp {
                 this.visualizer.executeAnimation({ type: cmd, failed: true });
             } else if (!this.isAborted && !hasError) {
                 // 成功時の最終記録 (「🔄 アニメーション再生」ボタン用)
-                if (cmd === 'traceroute' || cmd === 'tracert') {
+                if (cmd === 'traceroute' || cmd === 'tracert' || cmd === 'route') {
                     this.visualizer.lastCommand = { type: 'traceroute', route: routeData || hopDataList };
                 } else if (cmd === 'ping') {
                     this.visualizer.lastCommand = { type: 'ping', route: routeData };

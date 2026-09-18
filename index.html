@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>easyPacket - ネットワーク学習Webアプリ</title>
-    <link rel="stylesheet" href="style.css?v=20260919">
+    <link rel="stylesheet" href="style.css?v=20260919-0615">
 </head>
 <body>
     <header class="header">
@@ -123,6 +123,14 @@
                         💻 ipconfig
                         <small>自分の情報を表示</small>
                     </button>
+                    <button class="cmd-btn" data-cmd="route" title="自分の経路表を表示">
+                        🧭 route
+                        <small>経路表を表示</small>
+                    </button>
+                    <button class="cmd-btn" data-cmd="route google.com" title="各ルータの経路表と転送判断を表示">
+                        🧭 route google.com
+                        <small>中継ルータの経路表</small>
+                    </button>
                 </div>
 
                 <div class="cmd-group">
@@ -169,6 +177,10 @@
                     <p>パケットを目的地まで中継する装置。交差点のようなもの。</p>
                 </div>
                 <div class="term">
+                    <h4>経路表（ルーティングテーブル）</h4>
+                    <p>ルータやPCがパケットをどの次ホップ（隣の機器）へ転送すべきかを記録した表。宛先・距離・次ホップなどで構成される。</p>
+                </div>
+                <div class="term">
                     <h4>TTL (Time To Live)</h4>
                     <p>パケットが経由できるルーターの最大数。無限ループを防ぐ。</p>
                 </div>
@@ -176,9 +188,9 @@
         </aside>
     </div>
 
-    <script src="data.js?v=20260919"></script>
-    <script src="simulator.js?v=20260919"></script>
-    <script src="visualizer.js?v=20260919"></script>
-    <script src="app.js?v=20260919"></script>
+    <script src="data.js?v=20260919-0615"></script>
+    <script src="simulator.js?v=20260919-0615"></script>
+    <script src="visualizer.js?v=20260919-0615"></script>
+    <script src="app.js?v=20260919-0615"></script>
 </body>
 </html>

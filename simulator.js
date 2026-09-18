@@ -4,6 +4,7 @@ class CommandSimulator {
         // オフライン用埋め込みデータで初期化 (data.js から同期的に取得)
         this.dnsData = typeof DEFAULT_DNS_DATA !== 'undefined' ? Object.assign({}, DEFAULT_DNS_DATA) : {};
         this.routesData = typeof DEFAULT_ROUTES_DATA !== 'undefined' ? Object.assign({}, DEFAULT_ROUTES_DATA) : {};
+        this.routingTables = typeof DEFAULT_ROUTING_TABLES !== 'undefined' ? Object.assign({}, DEFAULT_ROUTING_TABLES) : {};
         this.isAborted = false;
         this.currentSleepResolve = null;
         this.loadData();
@@ -33,6 +34,16 @@ class CommandSimulator {
     resetAbort() {
         this.isAborted = false;
         this.currentSleepResolve = null;
+    }
+
+    // 全角文字は表示幅2セルとして数え、表の列を揃える
+    padDisplay(str, width) {
+        const t = String(str);
+        let w = 0;
+        for (const ch of t) {
+            w += /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch) ? 2 : 1;
+        }
+        return t + ' '.repeat(Math.max(0, width - w));
     }
 
     sleep(ms) {
@@ -243,6 +254,141 @@ class CommandSimulator {
         yield { type: 'success', text: '                                         8.8.8.8' };
     }
 
+    // route コマンド (AsyncGenerator: 距離ベクトル型ルーティングテーブル表示)
+    async *route(domain) {
+        if (!domain) {
+            // 引数なし: あなたのPCの経路表を表示
+            yield { type: 'command', text: '$ route' };
+            yield { type: 'info', text: '【あなたのPC (192.168.1.100) の経路表】' };
+            yield { type: 'info', text: '宛先                  距離      次ホップ' };
+            yield { type: 'info', text: '--------------------------------------------' };
+
+            const pcTableObj = this.routingTables['pc'] || (typeof DEFAULT_ROUTING_TABLES !== 'undefined' ? DEFAULT_ROUTING_TABLES['pc'] : null);
+            if (pcTableObj && Array.isArray(pcTableObj.table)) {
+                for (const entry of pcTableObj.table) {
+                    const destPad = entry.dest.padEnd(22, ' ');
+                    const distPad = this.padDisplay(entry.dist, 10);
+                    yield { type: 'success', text: `${destPad}${distPad}${entry.nextHop}` };
+                }
+            }
+            yield { type: 'info', text: '--------------------------------------------' };
+            yield { type: 'info', text: '💡 距離: 0=自身, 1=直接接続, 2以上=経由ホップ数, まだ不明=未学習' };
+            yield { type: 'info', text: '💡 特定ドメインへの転送を確認するには: route google.com' };
+            return;
+        }
+
+        // URL形式チェック
+        const check = this.checkAndSuggestDomain(domain, 'route');
+        if (check.hasError) {
+            for (const item of check.results) {
+                yield Object.assign({}, item, { failed: true });
+            }
+            return;
+        }
+
+        yield { type: 'command', text: `$ route ${domain}` };
+
+        // IP直接指定か、DNSから検索
+        const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(domain);
+        let ip = isIpAddress ? domain : this.dnsData[domain];
+
+        if (!ip || ip === 'TIMEOUT') {
+            yield { type: 'error', text: `route: ${domain}: Name or service not known`, failed: true };
+            return;
+        }
+
+        // 経路データを取得
+        let routes = this.routesData[domain];
+        if (!routes) {
+            routes = [
+                { ip: "192.168.1.1", name: "my-router.local", time: 1 },
+                { ip: "10.0.0.1", name: "provider-router-1.isp.net", time: 10 },
+                { ip: "198.51.100.1", name: "ix-router.net", time: 18 },
+                { ip: "203.0.113.1", name: "backbone-router.net", time: 24 },
+                { ip: ip, name: domain, time: 28 }
+            ];
+        }
+
+        yield {
+            type: 'info',
+            text: `宛先: ${domain} (${ip}) への経路と各ルータの経路表:`,
+            tracerouteHeader: { domain, ip, routes }
+        };
+
+        // ホップ 1: あなたのPC
+        await this.sleep(300);
+        if (this.isAborted) return;
+
+        yield { type: 'info', text: `\n[ホップ 1] あなたのPC (192.168.1.100)` };
+        yield { type: 'info', text: `宛先                  距離      次ホップ` };
+        yield { type: 'info', text: '--------------------------------------------' };
+        const pcTableObj = this.routingTables['pc'] || (typeof DEFAULT_ROUTING_TABLES !== 'undefined' ? DEFAULT_ROUTING_TABLES['pc'] : null);
+        if (pcTableObj && Array.isArray(pcTableObj.table)) {
+            for (const entry of pcTableObj.table.slice(0, 4)) {
+                const destPad = entry.dest.padEnd(22, ' ');
+                const distPad = this.padDisplay(entry.dist, 10);
+                yield { type: 'success', text: `${destPad}${distPad}${entry.nextHop}` };
+            }
+        }
+        const firstRouter = routes[0];
+        yield {
+            type: 'success',
+            text: `👉 転送判断: 宛先 ${ip} は外部網のためデフォルトルート (0.0.0.0/0) を選択 -> 次ホップ ${firstRouter.ip} (${firstRouter.name}) へ送信`,
+            hopData: { ip: firstRouter.ip, name: firstRouter.name },
+            hopIndex: 0,
+            totalHops: routes.length
+        };
+
+        // 中継ルータの各ホップ
+        for (let i = 0; i < routes.length - 1; i++) {
+            await this.sleep(400);
+            if (this.isAborted) return;
+
+            const currentRouter = routes[i];
+            const nextHop = routes[i + 1];
+            const tableObj = this.routingTables[currentRouter.ip] || this._generateFallbackTable(currentRouter, nextHop);
+
+            yield { type: 'info', text: `\n[ホップ ${i + 2}] ${currentRouter.name} (${currentRouter.ip})` };
+            yield { type: 'info', text: `宛先                  距離      次ホップ` };
+            yield { type: 'info', text: '--------------------------------------------' };
+            for (const entry of tableObj.table) {
+                const destPad = entry.dest.padEnd(22, ' ');
+                const distPad = this.padDisplay(entry.dist, 10);
+                yield { type: 'success', text: `${destPad}${distPad}${entry.nextHop}` };
+            }
+
+            const isLastHop = (i === routes.length - 2);
+            const decisionText = isLastHop
+                ? `👉 転送判断: 目的地のネットワークが直接接続(距離1) -> 宛先 ${nextHop.ip} (${nextHop.name}) へ直接届ける`
+                : `👉 転送判断: 宛先 ${ip} への最短経路(次ホップ: ${nextHop.ip})を選択 -> ${nextHop.name} へ転送`;
+
+            yield {
+                type: 'success',
+                text: decisionText,
+                hopData: { ip: nextHop.ip, name: nextHop.name },
+                hopIndex: i + 1,
+                totalHops: routes.length
+            };
+        }
+
+        await this.sleep(300);
+        if (this.isAborted) return;
+
+        yield { type: 'info', text: `\n🎯 目的地 ${domain} (${ip}) にパケットが到着しました（転送完了）` };
+    }
+
+    _generateFallbackTable(currentRouter, nextHop) {
+        return {
+            name: `${currentRouter.name} (${currentRouter.ip})`,
+            ip: currentRouter.ip,
+            table: [
+                { dest: `${currentRouter.ip}/24`, dist: 0, nextHop: '自身' },
+                { dest: `${nextHop.ip}/24`, dist: 1, nextHop: nextHop.ip },
+                { dest: '0.0.0.0/0', dist: '既定', nextHop: nextHop.ip }
+            ]
+        };
+    }
+
     // clear コマンド (AsyncGenerator)
     async *clear() {
         yield { type: 'clear', text: '' };
@@ -256,6 +402,7 @@ class CommandSimulator {
         yield { type: 'success', text: '  ping <domain>      - サーバーへの接続を確認する' };
         yield { type: 'success', text: '  traceroute <domain> - パケットの経路を追跡する' };
         yield { type: 'success', text: '  ipconfig           - 自分のIPアドレスを表示する' };
+        yield { type: 'success', text: '  route [domain]     - 経路表（ルーティングテーブル）の表示' };
         yield { type: 'success', text: '  clear              - コンソールをクリアする' };
         yield { type: 'success', text: '  help               - このヘルプを表示する' };
     }
@@ -338,6 +485,10 @@ class CommandSimulator {
                 yield* this.ipconfig();
                 break;
 
+            case 'route':
+                yield* this.route(arg);
+                break;
+
             case 'clear':
             case 'cls':
                 yield* this.clear();
@@ -350,7 +501,7 @@ class CommandSimulator {
 
             default:
                 yield { type: 'error', text: `❌ '${command}' は認識されていません`, failed: true };
-                yield { type: 'info', text: '💡 利用可能なコマンド: nslookup, ping, traceroute, ipconfig, clear, help' };
+                yield { type: 'info', text: '💡 利用可能なコマンド: nslookup, ping, traceroute, ipconfig, route, clear, help' };
                 yield { type: 'info', text: '詳しくは「help」と入力してください' };
                 break;
         }

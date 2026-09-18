@@ -43,3 +43,8 @@ build/
 .env
 .env.local
 .env.*.local
+
+# ブラウザ検証時の作業用プロファイル
+.chrome-profile/
+# 検証用の一時HTML
+tests/verify-*.html

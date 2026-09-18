@@ -93,6 +93,7 @@ class NetworkVisualizer {
                 this.animatePing(commandData.route);
                 break;
             case 'traceroute':
+            case 'route':
                 this.animateTraceroute(commandData.route);
                 break;
             case 'ipconfig':
